@@ -1,0 +1,7 @@
+{
+  "files.associations": {
+    "*.m": "objective-c",
+    "*.h": "cpp",
+    "cstdlib": "cpp"
+  }
+}
