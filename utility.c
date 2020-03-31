@@ -107,6 +107,44 @@ void readINode(DiskInfo* disk_info, int32_t number, INode* i_node) {
 }
 
 /**
+ * @brief Just read all of the data from an INode
+ *
+ * @param disk_info
+ * @param inode
+ */
+void readINodeData(DiskInfo* disk_info, INode* inode, int8_t* buffer, int32_t bytes) {
+  int32_t block_index   = 0;
+  int32_t buffer_offset = 0;
+
+  // TODO: Support links
+  for (int pos = 0; pos < 15; pos++) {
+    if (inode->i_block[pos] == NULL) {
+      continue;
+    }
+
+    int32_t bytes_to_read = (bytes - buffer_offset) > disk_info->block_size
+                              ? disk_info->block_size
+                              : (bytes - buffer_offset);
+    readBlockBytes(disk_info, inode->i_block[pos], buffer + buffer_offset, bytes_to_read, 0);
+    buffer_offset += bytes_to_read;
+  }
+}
+
+/**
+ * @brief Returns 1 if is end dir
+ *
+ * @param directory
+ * @return int
+ */
+int isEndDirectory(Directory* directory) {
+  if (directory->file_type == EXT2_FT_UNKNOWN) {
+    return 1;
+  }
+
+  return 0;
+}
+
+/**
  * @brief Reads a directory given an INode
  *
  * @param disk_info
@@ -116,20 +154,19 @@ void readINode(DiskInfo* disk_info, int32_t number, INode* i_node) {
  */
 int readDirectory(DiskInfo* disk_info, INode* inode, Directory* directory, int32_t offset) {
   int32_t block_index     = offset / disk_info->block_size;
-  int32_t directory_index = offset % 1024;
+  int32_t directory_index = offset % disk_info->block_size;
 
   printf("{R Directory offset=%i (block_index=%i directory_index=%i)} ", offset, block_index,
          directory_index);
 
   // Read the first bit of the struct into memory
-  readBlockBytes(disk_info, inode->i_block[directory_index], (int8_t*)directory, 8,
-                 directory_index);
+  readBlockBytes(disk_info, inode->i_block[block_index], (int8_t*)directory, 8, directory_index);
 
   // Clean up the place to dump the string
   bzero(directory->name, sizeof(directory->name));
 
   // Read the name into the directory
-  readBlockBytes(disk_info, inode->i_block[directory_index], (int8_t*)directory->name,
+  readBlockBytes(disk_info, inode->i_block[block_index], (int8_t*)directory->name,
                  directory->name_len, directory_index + 8);
 
   return 8 + directory->name_len;
@@ -156,6 +193,25 @@ void printDiskInfomation(ExtInfo* ext_info, DiskInfo* disk_info) {
   printf("%20s: %10u\n", "First INode", ext_info->super_block.s_first_ino);
   printf("%20s: %10u\n", "Free INodes", ext_info->super_block.s_free_inodes_count);
   printf("%20s: %10u\n", "INodes per Group", ext_info->super_block.s_inodes_per_group);
+}
+
+void printDirectory(Directory* directory) {
+  printf("%20s: %s\n", "Name", directory->name);
+  printf("%20s: %10u\n", "Name Length", directory->name_len);
+  printf("%20s: %10u\n", "INode", directory->inode);
+  printf("%20s: %10u\n", "Rec Len", directory->rec_len);
+  printf("%20s: %10u\n", "File Type", directory->file_type);
+}
+
+void printINode(INode* inode) {
+  printf("%20s: %10i\n", "Size", inode->i_size);
+  printf("%20s: %10i\n", "Blocks", inode->i_blocks);
+
+  for (int pos = 0; pos < 15; pos++) {
+    printf("%15s[%3i]: %10i\n", "Block", pos, inode->i_block[pos]);
+  }
+
+  printf("%20s: %10i\n", "Mode", inode->i_mode);
 }
 
 /**
@@ -207,10 +263,32 @@ void initializeFilesystem(DiskInfo* disk_info, ExtInfo* ext_info) {
 
   INode     root_inode;
   Directory root_dir;
-  int32_t   dir_index;
+  int32_t   dir_index = 0;
 
   readINode(disk_info, EXT2_ROOT_INO, &root_inode);
   printf("Root INode infomation:\n");
 
-  readDirectory(disk_info, &root_inode, &root_dir, 0);
+  while (1) {
+    if (dir_index % 4 != 0) {
+      dir_index += 4 - (dir_index % 4);
+    }
+
+    dir_index += readDirectory(disk_info, &root_inode, &root_dir, dir_index);
+
+    if (isEndDirectory(&root_dir)) {
+      break;
+    }
+
+    printDirectory(&root_dir);
+
+    if (root_dir.file_type == EXT2_FT_REG_FILE) {
+      INode data_inode;
+      readINode(disk_info, root_dir.inode, &data_inode);
+      printINode(&data_inode);
+
+      char buffer[1024] = { 0 };
+      readINodeData(disk_info, &data_inode, (int8_t*)&buffer, 1024);
+      printf("%20s: %s\n", "Data", buffer);
+    }
+  }
 }
