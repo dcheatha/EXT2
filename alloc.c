@@ -52,17 +52,30 @@ void allocateDirectoryEntry(DiskInfo* disk_info, int32_t inode_start, Directory*
   }
 }
 
-/*
-void allocateINode(DiskInfo* disk_info, )
+/**
+ * @brief Returns the INode no of a newly allocated INode
+ *
+ * @param disk_info
+ * @param ext_info
+ * @return int32_t
+ */
+int32_t allocateINode(DiskInfo* disk_info, ExtInfo* ext_info) {
+  GroupDesc group_desc;
+  int32_t   group_pos = 0;
+  int8_t    buffer[disk_info->block_size];
 
-  void printINode(INode* inode) {
-  printf("%20s: %10i\n", "Size", inode->i_size);
-  printf("%20s: %10i\n", "Blocks", inode->i_blocks);
+  for (int32_t group = 0; group < disk_info->group_count; group++) {
+    readGroupDesc(disk_info, group, &group_desc);
+    readBlock(disk_info, group_desc.bg_inode_bitmap, (int8_t*)&buffer);
 
-  for (int pos = 0; pos < 15; pos++) {
-    printf("%15s[%3i]: %10i\n", "Block", pos, inode->i_block[pos]);
+    for (int32_t pos = 0; pos < disk_info->inodes_per_group / 8; pos++) {
+      int32_t bit = findFreeBit(buffer[pos], 0);
+
+      if (bit != -1) {
+        int32_t free_inode_pos = bit + (pos * 8) + (group * disk_info->inodes_per_group);
+        printf("found free inode=%i\n", free_inode_pos);
+        return;
+      }
+    }
   }
-
-  printf("%20s: %10i\n", "Mode", inode->i_mode);
 }
-*/

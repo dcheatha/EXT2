@@ -47,4 +47,36 @@ void initializeFilesystem(DiskInfo* disk_info, ExtInfo* ext_info) {
 
   printDiskInfomation(ext_info, disk_info);
   printDirectoryTable(disk_info, EXT2_ROOT_INO);
+
+  allocateINode(disk_info, ext_info);
+}
+
+/**
+ * @brief Check if a bit is true
+ *
+ * @param byte
+ * @param bit
+ * @return int
+ */
+int testBit(int8_t data, int8_t bit) {
+  bit = 1 << bit;
+  printf("Checking %i and %i...\n", data, bit);
+  return (bit & data);
+}
+
+/**
+ * @brief Finds a free bit in a bitmap
+ *
+ * @param data
+ * @return int
+ */
+int findFreeBit(int8_t data, int8_t start) {
+  printf("Testbit: %i\n", data);
+  for (int8_t bit_pos = start; bit_pos < 8 * sizeof(int8_t); bit_pos++) {
+    if (!testBit(data, bit_pos)) {
+      return bit_pos;
+    }
+  }
+
+  return -1;
 }

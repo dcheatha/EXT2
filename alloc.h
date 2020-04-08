@@ -3,6 +3,7 @@
 
 #include "io.h"
 #include "types.h"
+#include "utility.h"
 
 #include <time.h>
 
@@ -22,5 +23,14 @@ void allocateDirectoryEntry(DiskInfo* disk_info, int32_t inode_start, Directory*
  * @return int
  */
 int isEndDirectory(Directory* directory);
+
+/**
+ * @brief Allocates an INode
+ *
+ * @param disk_info
+ * @param ext_info
+ * @return int32_t
+ */
+int32_t allocateINode(DiskInfo* disk_info, ExtInfo* ext_info);
 
 #endif

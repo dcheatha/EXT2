@@ -31,6 +31,17 @@ void printDirectory(Directory* directory) {
   printf("%20s: %10u\n", "File Type", directory->file_type);
 }
 
+void printINode(INode* inode) {
+  printf("%20s: %10i\n", "Size", inode->i_size);
+  printf("%20s: %10i\n", "Blocks", inode->i_blocks);
+
+  for (int pos = 0; pos < 15; pos++) {
+    printf("%15s[%3i]: %10i\n", "Block", pos, inode->i_block[pos]);
+  }
+
+  printf("%20s: %10i\n", "Mode", inode->i_mode);
+}
+
 void printDirectoryTable(DiskInfo* disk_info, int32_t inode_start) {
   INode     root_inode;
   Directory root_dir;
