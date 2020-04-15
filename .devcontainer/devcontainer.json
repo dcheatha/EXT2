@@ -7,9 +7,18 @@
 	},
 
 	"extensions": [
-    "ms-vscode.cpptools"
-  ],
+		"ms-vscode.cpptools",
+		"eamodio.gitlens",
+		"austin.code-gnu-global",
+		"xaver.clang-format",
+		"ms-vsliveshare.vsliveshare",
+		"cschlosser.doxdocgen"
+	],
 
 	"forwardPorts": [],
 	"postCreateCommand": "gcc --version"
 }
+
+
+
+

@@ -11,12 +11,14 @@ void printDiskInfomation(ExtInfo* ext_info, DiskInfo* disk_info) {
   printf("%20s: %10s\n", "Last Mount Path", ext_info->super_block.s_last_mounted);
 
   printf("%20s: %10u\n", "Blocks per Group", ext_info->super_block.s_blocks_per_group);
-  printf("%20s: %10i\n", "Blocks Count",
-         (int64_t)ext_info->super_block.s_blocks_count << 32 |
+  printf("%20s: %10li\n", "Blocks Count",
+         (int64_t)ext_info->super_block.s_blocks_count_hi << 32 |
            ext_info->super_block.s_blocks_count);
+  printf("%20s: %10li\n", "Free Blocks Count",
+         (int64_t)ext_info->super_block.s_free_blocks_hi << 32 |
+           ext_info->super_block.s_free_blocks_count);
   printf("%20s: %10u\n", "Block Size", 1024 << ext_info->super_block.s_log_block_size);
   printf("%20s: %10u\n", "First Block", ext_info->super_block.s_first_data_block);
-  printf("%20s: %10u\n", "Free Blocks", ext_info->super_block.s_free_blocks_count);
   printf("%20s: %10u\n", "INode Count", ext_info->super_block.s_inodes_count);
   printf("%20s: %10u\n", "First INode", ext_info->super_block.s_first_ino);
   printf("%20s: %10u\n", "Free INodes", ext_info->super_block.s_free_inodes_count);

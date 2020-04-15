@@ -9,7 +9,7 @@
  * @param bytes Number of bytes to read
  */
 void readBytes(DiskInfo* disk_info, int32_t offset, int8_t* buffer, int64_t bytes) {
-  printf("(R bytes=%i offset=%i)\n", bytes, offset);
+  printf("(R bytes bytes=%li offset=%i)\n", bytes, offset);
   lseek(disk_info->file_desc, offset, SEEK_SET);
   read(disk_info->file_desc, buffer, bytes);
 }
@@ -23,7 +23,7 @@ void readBytes(DiskInfo* disk_info, int32_t offset, int8_t* buffer, int64_t byte
  * @param bytes
  */
 void writeBytes(DiskInfo* disk_info, int32_t offset, int8_t* buffer, int64_t bytes) {
-  printf("(W bytes=%i offset=%i)\n", bytes, offset);
+  printf("(W bytes bytes=%li offset=%i)\n", bytes, offset);
   lseek(disk_info->file_desc, offset, SEEK_SET);
   write(disk_info->file_desc, buffer, bytes);
 }
@@ -36,7 +36,7 @@ void writeBytes(DiskInfo* disk_info, int32_t offset, int8_t* buffer, int64_t byt
  * @param buffer
  */
 void readBlock(DiskInfo* disk_info, int64_t block, int8_t* buffer) {
-  printf("[R block=%i] ", block);
+  printf("[R block block=%li] ", block);
   readBytes(disk_info, block * disk_info->block_size, buffer, disk_info->block_size);
 }
 
@@ -51,7 +51,7 @@ void readBlock(DiskInfo* disk_info, int64_t block, int8_t* buffer) {
  */
 void readBlockBytes(DiskInfo* disk_info, int64_t block, int8_t* buffer, int64_t bytes,
                     int64_t offset) {
-  printf("[R block=%i bytes=%i offset=%i] ", block, bytes, offset);
+  printf("[R block block=%li bytes=%li offset=%li] ", block, bytes, offset);
   readBytes(disk_info, block * disk_info->block_size + offset, buffer, bytes);
 }
 
@@ -66,7 +66,7 @@ void readBlockBytes(DiskInfo* disk_info, int64_t block, int8_t* buffer, int64_t 
  */
 void writeBlockBytes(DiskInfo* disk_info, int64_t block, int8_t* buffer, int64_t bytes,
                      int64_t offset) {
-  printf("[W block=%i bytes=%i offset=%i] ", block, bytes, offset);
+  printf("[W block block=%li bytes=%li offset=%li] ", block, bytes, offset);
   writeBytes(disk_info, block * disk_info->block_size + offset, buffer, bytes);
 }
 
@@ -116,7 +116,7 @@ void readINode(DiskInfo* disk_info, int32_t number, INode* i_node) {
   int32_t   table_index = (number - 1) % disk_info->inodes_per_group;
 
   readGroupDesc(disk_info, block, &group_desc);
-  printf("{R INode=%i} ", number);
+  printf("{R INode INode=%i} ", number);
   readBlockBytes(disk_info, group_desc.bg_inode_table, (int8_t*)i_node, sizeof(INode),
                  table_index * sizeof(INode));
 }
@@ -134,7 +134,7 @@ void writeINode(DiskInfo* disk_info, int32_t number, INode* i_node) {
   int32_t   table_index = (number - 1) % disk_info->inodes_per_group;
 
   readGroupDesc(disk_info, block, &group_desc);
-  printf("{W INode=%i} ", number);
+  printf("{W INode INode=%i} ", number);
   writeBlockBytes(disk_info, group_desc.bg_inode_table, (int8_t*)i_node, sizeof(INode),
                   table_index * sizeof(INode));
 }
