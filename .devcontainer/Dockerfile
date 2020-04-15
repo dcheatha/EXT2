@@ -7,4 +7,5 @@ RUN apt-get update && apt-get install -y \
   cmake\
   googletest\
   g++\
-  gcc
+  gcc\
+  e2fslibs-dev
