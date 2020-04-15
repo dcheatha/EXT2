@@ -1,0 +1,15 @@
+{
+	"name": "c",
+	"dockerFile": "Dockerfile",
+
+	"settings": { 
+		"terminal.integrated.shell.linux": "/bin/zsh"
+	},
+
+	"extensions": [
+    "ms-vscode.cpptools"
+  ],
+
+	"forwardPorts": [],
+	"postCreateCommand": "gcc --version"
+}

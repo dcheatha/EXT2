@@ -1,0 +1,32 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+      {
+          "label": "Build Main",
+          "type": "shell",
+          "command": "make build",
+          "group": {
+              "kind": "build",
+              "isDefault": true
+          }
+      },
+      {
+          "label": "Build Tests",
+          "type": "shell",
+          "command": "make build-tests",
+          "group": {
+              "kind": "build",
+              "isDefault": true
+          }
+      },
+      {
+          "label": "Build Release",
+          "type": "shell",
+          "command": "g++ -O3 src/main.cpp -o build/release_main",
+          "group": {
+              "kind": "build",
+              "isDefault": true
+          }
+      }
+  ]
+}
