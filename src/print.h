@@ -1,9 +1,9 @@
 #ifndef PRINT_H
 #define PRINT_H
 
+#include "alloc.h"
 #include "io.h"
 #include "types.h"
-#include "alloc.h"
 
 #include <stdio.h>
 
@@ -13,14 +13,14 @@
  * @param ext_info
  * @param disk_info
  */
-void printDiskInfomation(ExtInfo* ext_info, DiskInfo* disk_info);
+void printDiskInfomation(ExtInfo *ext_info, DiskInfo *disk_info);
 
 /**
  * @brief Prints info for a single dir entry
  *
  * @param directory
  */
-void printDirectory(Directory* directory);
+void printDirectory(Directory *directory);
 
 /**
  * @brief Prints an entire dir table
@@ -28,6 +28,20 @@ void printDirectory(Directory* directory);
  * @param disk_info
  * @param inode_start
  */
-void printDirectoryTable(DiskInfo* disk_info, int32_t inode_start);
+void printDirectoryTable(DiskInfo *disk_info, int32_t inode_start);
+
+/**
+ * @brief Prints a bitmap
+ *
+ * @param bitmap
+ */
+void printBitmap(int8_t bitmap);
+
+/**
+ * @brief Prints a group desc
+ *
+ * @param group_desc
+ */
+void printGroupDesc(GroupDesc *group_desc);
 
 #endif

@@ -48,6 +48,7 @@ build-disk:
 	dd if=/dev/zero of=./$(BINDIR)/$(DISKNAME) bs=1024K count=1
 	mkfs.ext2 ./$(BINDIR)/$(DISKNAME)
 #	mount ./$(BINDIR)/$(DISKNAME) /mnt/$(DISKNAME) 
+
 	# Add some sample data to the disk..
 #	echo "This is a test file!" >> /mnt/$(DISKNAME)/test.txt
 #	mkdir /mnt/$(DISKNAME)/test-folder
