@@ -38,4 +38,38 @@ typedef struct ext2_info {
   int32_t                 first_inode_table_block;
 } ExtInfo;
 
+/**
+ * @brief Command IDs for interacting with the filesystem
+ * MKFS = Make Filesystem
+ */
+enum Command { LS, MKDIR, RMDIR, CREATE, LINK, UNLINK, MKFS } typedef Command;
+
+/**
+ * @brief Keeps track of the current path on disk
+ * NOTE: Must dealloc these
+ */
+struct Path {
+  char         name[256];
+  int64_t      INode;
+  struct Path* next;
+} typedef Path;
+
+/**
+ * @brief Keeps track of user infomation
+ */
+struct User {
+  int32_t user_id;
+  int32_t group_id;
+} typedef User;
+
+/**
+ * @brief Stores the current state of the filesystem we're emulating
+ */
+struct State {
+  ExtInfo*  ext_info;
+  DiskInfo* disk_info;
+  User      user;
+  Path*     path;
+} typedef State;
+
 #endif

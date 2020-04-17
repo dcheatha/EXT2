@@ -41,6 +41,18 @@ void readBlock(DiskInfo* disk_info, int64_t block, int8_t* buffer) {
 }
 
 /**
+ * @brief Writes a block to the disk
+ *
+ * @param file_desc file desc
+ * @param block Block number
+ * @param buffer
+ */
+void writeBlock(DiskInfo* disk_info, int64_t block, int8_t* buffer) {
+  printf("[W block block=%li] ", block);
+  writeBytes(disk_info, block * disk_info->block_size, buffer, disk_info->block_size);
+}
+
+/**
  * @brief Reads a block at an offset for x bytes
  *
  * @param disk_info
@@ -146,7 +158,6 @@ void writeINode(DiskInfo* disk_info, int32_t number, INode* i_node) {
  * @param inode
  */
 void readINodeData(DiskInfo* disk_info, INode* inode, int8_t* buffer, int32_t bytes) {
-  int32_t block_index   = 0;
   int32_t buffer_offset = 0;
 
   // TODO: Support links
@@ -162,8 +173,6 @@ void readINodeData(DiskInfo* disk_info, INode* inode, int8_t* buffer, int32_t by
     buffer_offset += bytes_to_read;
   }
 }
-
-
 
 /**
  * @brief Reads a directory given an INode
@@ -226,4 +235,15 @@ int writeDirectory(DiskInfo* disk_info, INode* inode, Directory* directory, int3
   }
 
   return 8 + directory->name_len + padding;
+}
+
+/**
+ * @brief Searches the disk for a path
+ *
+ * @param state
+ * @param parameter
+ * @return Path*
+ */
+Path* readPath(State* state, char* parameter) {
+  
 }

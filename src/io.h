@@ -38,6 +38,15 @@ void writeBytes(DiskInfo* disk_info, int32_t offset, int8_t* buffer, int64_t byt
 void readBlock(DiskInfo* disk_info, int64_t block, int8_t* buffer);
 
 /**
+ * @brief Writes an entire block
+ *
+ * @param disk_info
+ * @param block
+ * @param buffer
+ */
+void writeBlock(DiskInfo* disk_info, int64_t block, int8_t* buffer);
+
+/**
  * @brief Reads part of a block
  *
  * @param disk_info

@@ -10,9 +10,9 @@
  * @param disk_info
  * @param ext_info
  */
-void initializeFilesystem(DiskInfo *disk_info, ExtInfo *ext_info) {
+void initializeFilesystem(DiskInfo* disk_info, ExtInfo* ext_info) {
   // The superblock is located at an offset of 1024 bytes, ie, the first block.
-  readBytes(disk_info, SUPERBLOCK_OFFSET, (int8_t *)&ext_info->super_block,
+  readBytes(disk_info, SUPERBLOCK_OFFSET, (int8_t*)&ext_info->super_block,
             sizeof(struct ext2_super_block));
 
   if (ext_info->super_block.s_magic != EXT2_SUPER_MAGIC) {
@@ -52,8 +52,6 @@ void initializeFilesystem(DiskInfo *disk_info, ExtInfo *ext_info) {
   printDiskInfomation(ext_info, disk_info);
   // printGroupDesc(ext_info->)
   printDirectoryTable(disk_info, EXT2_ROOT_INO);
-
-  allocateINode(disk_info, ext_info);
 }
 
 /**

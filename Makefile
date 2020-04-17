@@ -45,7 +45,7 @@ build-disk:
 #	mkdir -p /mnt/$(DISKNAME)
 
 	# Build and mount the disk
-	dd if=/dev/zero of=./$(BINDIR)/$(DISKNAME) bs=1024K count=1
+	dd if=/dev/zero of=./$(BINDIR)/$(DISKNAME) bs=1024K count=10
 	mkfs.ext2 ./$(BINDIR)/$(DISKNAME)
 #	mount ./$(BINDIR)/$(DISKNAME) /mnt/$(DISKNAME) 
 

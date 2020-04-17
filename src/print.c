@@ -1,34 +1,37 @@
 #include "print.h"
 
 /**
+ * @brief Prints the menu
+ */
+void printMenu() {
+  for (int32_t pos = 0; pos < kCommandCount; pos++) {
+    printf("(%02i) %-10s\n", pos + 1, kPrintCommands[pos]);
+  }
+}
+
+/**
  * @brief Dumps infomation about the disk for debugging
  *
  * @param ext_info
  */
-void printDiskInfomation(ExtInfo *ext_info, DiskInfo *disk_info) {
+void printDiskInfomation(ExtInfo* ext_info, DiskInfo* disk_info) {
   printf("EX2 Filesystem loaded: {\n");
   printf("%20s: %10s\n", "Volume Name", ext_info->super_block.s_volume_name);
-  printf("%20s: %10s\n", "Last Mount Path",
-         ext_info->super_block.s_last_mounted);
+  printf("%20s: %10s\n", "Last Mount Path", ext_info->super_block.s_last_mounted);
 
-  printf("%20s: %10u\n", "Blocks per Group",
-         ext_info->super_block.s_blocks_per_group);
+  printf("%20s: %10u\n", "Blocks per Group", ext_info->super_block.s_blocks_per_group);
   printf("%20s: %10li\n", "Blocks Count",
          (int64_t)ext_info->super_block.s_blocks_count_hi << 32 |
-             ext_info->super_block.s_blocks_count);
+           ext_info->super_block.s_blocks_count);
   printf("%20s: %10li\n", "Free Blocks Count",
          (int64_t)ext_info->super_block.s_free_blocks_hi << 32 |
-             ext_info->super_block.s_free_blocks_count);
-  printf("%20s: %10u\n", "Block Size",
-         1024 << ext_info->super_block.s_log_block_size);
-  printf("%20s: %10u\n", "First Block",
-         ext_info->super_block.s_first_data_block);
+           ext_info->super_block.s_free_blocks_count);
+  printf("%20s: %10u\n", "Block Size", 1024 << ext_info->super_block.s_log_block_size);
+  printf("%20s: %10u\n", "First Block", ext_info->super_block.s_first_data_block);
   printf("%20s: %10u\n", "INode Count", ext_info->super_block.s_inodes_count);
   printf("%20s: %10u\n", "First INode", ext_info->super_block.s_first_ino);
-  printf("%20s: %10u\n", "Free INodes",
-         ext_info->super_block.s_free_inodes_count);
-  printf("%20s: %10u\n", "INodes per Group",
-         ext_info->super_block.s_inodes_per_group);
+  printf("%20s: %10u\n", "Free INodes", ext_info->super_block.s_free_inodes_count);
+  printf("%20s: %10u\n", "INodes per Group", ext_info->super_block.s_inodes_per_group);
 
   printf("}\n");
 }
@@ -38,13 +41,13 @@ void printDiskInfomation(ExtInfo *ext_info, DiskInfo *disk_info) {
  *
  * @param group_desc
  */
-void printGroupDesc(GroupDesc *group_desc) {
+void printGroupDesc(GroupDesc* group_desc) {
   printf("Group Desc: {\n");
-  printf("%20s: %10s\n", "Free Blocks", group_desc->bg_free_blocks_count);
-  printf("%20s: %10s\n", "Free INodes", group_desc->bg_free_inodes_count);
-  printf("%20s: %10s\n", "Used Dir Count", group_desc->bg_used_dirs_count);
-  printf("%20s: %10s\n", "Block Bitmap", group_desc->bg_block_bitmap);
-  printf("%20s: %10s\n", "INode Bitmap", group_desc->bg_inode_bitmap);
+  printf("%20s: %10i\n", "Free Blocks", group_desc->bg_free_blocks_count);
+  printf("%20s: %10i\n", "Free INodes", group_desc->bg_free_inodes_count);
+  printf("%20s: %10i\n", "Used Dir Count", group_desc->bg_used_dirs_count);
+  printf("%20s: %10i\n", "Block Bitmap", group_desc->bg_block_bitmap);
+  printf("%20s: %10i\n", "INode Bitmap", group_desc->bg_inode_bitmap);
   printf("}\n");
 }
 
@@ -53,7 +56,7 @@ void printGroupDesc(GroupDesc *group_desc) {
  *
  * @param directory
  */
-void printDirectory(Directory *directory) {
+void printDirectory(Directory* directory) {
   printf("Dir: {\n");
   printf("%20s: %s\n", "Name", directory->name);
   printf("%20s: %10u\n", "Name Length", directory->name_len);
@@ -68,7 +71,7 @@ void printDirectory(Directory *directory) {
  *
  * @param inode
  */
-void printINode(INode *inode) {
+void printINode(INode* inode) {
   printf("INode: {\n");
   printf("%20s: %10i\n", "Size", inode->i_size);
   printf("%20s: %10i\n", "Blocks", inode->i_blocks);
@@ -87,10 +90,10 @@ void printINode(INode *inode) {
  * @param disk_info
  * @param inode_start
  */
-void printDirectoryTable(DiskInfo *disk_info, int32_t inode_start) {
-  INode root_inode;
+void printDirectoryTable(DiskInfo* disk_info, int32_t inode_start) {
+  INode     root_inode;
   Directory root_dir;
-  int32_t dir_index = 0;
+  int32_t   dir_index = 0;
 
   printf("Dir Table: {\n");
   readINode(disk_info, inode_start, &root_inode);
@@ -114,8 +117,8 @@ void printDirectoryTable(DiskInfo *disk_info, int32_t inode_start) {
       readINode(disk_info, root_dir.inode, &data_inode);
       printINode(&data_inode);
 
-      char buffer[1024] = {0};
-      readINodeData(disk_info, &data_inode, (int8_t *)&buffer, 1024);
+      char buffer[1024] = { 0 };
+      readINodeData(disk_info, &data_inode, (int8_t*)&buffer, 1024);
       printf("%20s: %s\n", "Data", buffer);
     }
   }
