@@ -83,6 +83,34 @@ int findFreeBit(int8_t data, int8_t start) {
 }
 
 /**
+ * @brief Parses a path
+ *
+ * @param destination of size EXT2_NAME_LEN
+ * @param input
+ * @param offset
+ * @param is_dir
+ */
+void parsePath(char* destination, char* input, int32_t* offset, int8_t* is_more) {
+  bzero(destination, EXT2_NAME_LEN);
+
+  *is_more = 0;
+
+  for (int32_t pos = *offset; pos < strlen(input); pos++) {
+    if (input[pos] == '/') {
+      *offset = pos + 1;
+
+      if (pos + 1 < strlen(input)) {
+        *is_more = 1;
+      }
+
+      return;
+    }
+
+    destination[pos] = input[pos];
+  }
+}
+
+/**
  * @brief Clears the path of the state
  *
  * @param state

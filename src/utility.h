@@ -35,6 +35,16 @@ int testBit(int8_t byte, int8_t bit);
 int findFreeBit(int8_t data, int8_t start);
 
 /**
+ * @brief Like strtok, but not useless
+ *
+ * @param destination of size EXT2_NAME_LEN
+ * @param input
+ * @param offset
+ * @param is_dir 1 if dir 0 otherwise
+ */
+void parsePath(char* destination, char* input, int32_t* offset, int8_t* is_dir);
+
+/**
  * @brief Clears the path
  *
  * @param state

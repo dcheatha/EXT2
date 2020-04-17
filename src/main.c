@@ -16,7 +16,7 @@ void initalizeState(State* state) {
   state->user.group_id = getgid();
 
   Path* root_path  = (Path*)calloc(1, sizeof(Path));
-  root_path->INode = EXT2_ROOT_INO;
+  root_path->inode_number = EXT2_ROOT_INO;
   strcpy(root_path->name, "/");
 
   state->path_root = root_path;

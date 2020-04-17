@@ -249,40 +249,56 @@ int32_t readPath(State* state, char* parameter) {
     return EXIT_SUCCESS;
   }
 
-  // If we want to start from the root dir, clear the path
+  // We're searching from root, so clear our CWD:
   if (parameter[0] == '/') {
     clearPath(state, state->path_cwd);
-    state->path_root->child = NULL;
   }
 
+  // Prep our path object
+  Path current_path;
+  memcpy(&current_path, state->path_cwd, sizeof(Path));
+  current_path.parent = NULL;
+  current_path.child  = NULL;
+
+  // Get ready to search the dir tables
+  char    item_name[EXT2_NAME_LEN];
+  int8_t  is_more          = 1;
+  int32_t parameter_offset = 0;
+
+  // Prepare to read the disk
   INode     current_inode;
   Directory current_directory;
-  char*     strtok_pointer = parameter;
-  char*     name           = strtok_r(parameter, "/", &strtok_pointer);
+  int32_t   directory_offset = 0;
 
-  while (name != NULL) {
-    int32_t directory_offset = 0;
+  // Get the first bit of the path
+  parsePath(item_name, parameter, &parameter_offset, &is_more);
 
-    // Read the INode we need
-    readINode(state->disk_info, state->path_cwd->INode, &current_inode);
-
-    // Read the directory table and look for a matching name
+  do {
+    readINode(state->disk_info, current_path.inode_number, &current_inode);
     directory_offset +=
       readDirectory(state->disk_info, &current_inode, &current_directory, directory_offset);
 
-    while (current_directory.name != name && !isEndDirectory(&current_directory)) {
+    // Search until the end for a matching name
+    // TODO: Continue searching if the file type is not a dir and we have more path
+    while (strcmp(current_directory.name, item_name) != 0 && !isEndDirectory(&current_directory)) {
       directory_offset +=
         readDirectory(state->disk_info, &current_inode, &current_directory, directory_offset);
     }
 
-    // If we couldn't find a matching name, die
-    if (current_directory.name != name) {
+    // If we couldn't find a match and we searched until the end
+    if (isEndDirectory(&current_directory)) {
       return EXIT_FAILURE;
     }
 
-    if (current_directory.file_type == EXT2_FT_DIR) {
-    }
+    // If we somehow got an item we wanna dig into:
+    bzero(&current_path, sizeof(Path));
+    current_path.inode_number = current_directory.inode;
+    strncpy(current_path.name, current_directory.name, current_directory.name_len);
 
-    name = strtok_r(parameter, "/", &strtok_pointer);
-  }
+    parsePath(item_name, parameter, &parameter_offset, &is_more);
+  } while (is_more);
+
+  // TODO: Find sane way to return
+
+  return EXIT_SUCCESS;
 }

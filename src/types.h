@@ -49,8 +49,8 @@ enum Command { LS, MKDIR, RMDIR, CREATE, LINK, UNLINK, MKFS } typedef Command;
  * NOTE: Must dealloc these
  */
 struct Path {
-  char         name[256];
-  int64_t      INode;
+  char         name[EXT2_NAME_LEN];
+  int32_t      inode_number;
   struct Path* parent;
   struct Path* child;
 } typedef Path;
