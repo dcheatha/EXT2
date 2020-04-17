@@ -81,3 +81,20 @@ int findFreeBit(int8_t data, int8_t start) {
 
   return -1;
 }
+
+/**
+ * @brief Clears the path of the state
+ *
+ * @param state
+ * @param path
+ */
+void clearPath(State* state, Path* path) {
+  Path* current_pos = path;
+
+  while (current_pos != state->path_root) {
+    current_pos = current_pos->parent;
+    free(current_pos->child);
+  }
+
+  state->path_cwd = state->path_root;
+}

@@ -19,7 +19,7 @@ void initalizeState(State* state) {
   root_path->INode = EXT2_ROOT_INO;
   strcpy(root_path->name, "/");
 
-  state->path = root_path;
+  state->path_root = root_path;
 }
 
 /**

@@ -88,7 +88,7 @@ void writeBlockBytes(DiskInfo* disk_info, int64_t block, int8_t* buffer, int64_t
  * @param group
  * @return int
  */
-int groupHasSuperBlock(const int32_t group) {
+int32_t groupHasSuperBlock(const int32_t group) {
   if (group == 0 || group == 1) {
     return 1;
   }
@@ -182,7 +182,7 @@ void readINodeData(DiskInfo* disk_info, INode* inode, int8_t* buffer, int32_t by
  * @param directory
  * @param offset
  */
-int readDirectory(DiskInfo* disk_info, INode* inode, Directory* directory, int32_t offset) {
+int32_t readDirectory(DiskInfo* disk_info, INode* inode, Directory* directory, int32_t offset) {
   int32_t block_index     = offset / disk_info->block_size;
   int32_t directory_index = offset % disk_info->block_size;
 
@@ -211,7 +211,7 @@ int readDirectory(DiskInfo* disk_info, INode* inode, Directory* directory, int32
  * @param offset
  * @return int
  */
-int writeDirectory(DiskInfo* disk_info, INode* inode, Directory* directory, int32_t offset) {
+int32_t writeDirectory(DiskInfo* disk_info, INode* inode, Directory* directory, int32_t offset) {
   int32_t block_index     = offset / disk_info->block_size;
   int32_t directory_index = offset % disk_info->block_size;
   int32_t padding         = 0;
@@ -238,12 +238,51 @@ int writeDirectory(DiskInfo* disk_info, INode* inode, Directory* directory, int3
 }
 
 /**
- * @brief Searches the disk for a path
+ * @brief Searches the disk for a path from the current path
  *
  * @param state
  * @param parameter
- * @return Path*
+ * @return int32_t
  */
-Path* readPath(State* state, char* parameter) {
-  
+int32_t readPath(State* state, char* parameter) {
+  if (strlen(parameter) <= 0) {
+    return EXIT_SUCCESS;
+  }
+
+  // If we want to start from the root dir, clear the path
+  if (parameter[0] == '/') {
+    clearPath(state, state->path_cwd);
+    state->path_root->child = NULL;
+  }
+
+  INode     current_inode;
+  Directory current_directory;
+  char*     strtok_pointer = parameter;
+  char*     name           = strtok_r(parameter, "/", &strtok_pointer);
+
+  while (name != NULL) {
+    int32_t directory_offset = 0;
+
+    // Read the INode we need
+    readINode(state->disk_info, state->path_cwd->INode, &current_inode);
+
+    // Read the directory table and look for a matching name
+    directory_offset +=
+      readDirectory(state->disk_info, &current_inode, &current_directory, directory_offset);
+
+    while (current_directory.name != name && !isEndDirectory(&current_directory)) {
+      directory_offset +=
+        readDirectory(state->disk_info, &current_inode, &current_directory, directory_offset);
+    }
+
+    // If we couldn't find a matching name, die
+    if (current_directory.name != name) {
+      return EXIT_FAILURE;
+    }
+
+    if (current_directory.file_type == EXT2_FT_DIR) {
+    }
+
+    name = strtok_r(parameter, "/", &strtok_pointer);
+  }
 }

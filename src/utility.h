@@ -34,4 +34,12 @@ int testBit(int8_t byte, int8_t bit);
  */
 int findFreeBit(int8_t data, int8_t start);
 
+/**
+ * @brief Clears the path
+ *
+ * @param state
+ * @param path
+ */
+void clearPath(State* state, Path* path);
+
 #endif

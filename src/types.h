@@ -51,7 +51,8 @@ enum Command { LS, MKDIR, RMDIR, CREATE, LINK, UNLINK, MKFS } typedef Command;
 struct Path {
   char         name[256];
   int64_t      INode;
-  struct Path* next;
+  struct Path* parent;
+  struct Path* child;
 } typedef Path;
 
 /**
@@ -69,7 +70,8 @@ struct State {
   ExtInfo*  ext_info;
   DiskInfo* disk_info;
   User      user;
-  Path*     path;
+  Path*     path_root;
+  Path*     path_cwd;
 } typedef State;
 
 #endif
