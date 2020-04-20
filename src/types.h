@@ -72,6 +72,7 @@ struct State {
   User      user;
   Path*     path_root;
   Path*     path_cwd;
+  Directory current_file;
 } typedef State;
 
 #endif

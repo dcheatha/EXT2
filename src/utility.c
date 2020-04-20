@@ -84,6 +84,7 @@ int findFreeBit(int8_t data, int8_t start) {
 
 /**
  * @brief Parses a path
+ * Like strtok, but for paths and tells you when the path is about to be over.
  *
  * @param destination of size EXT2_NAME_LEN
  * @param input

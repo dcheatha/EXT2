@@ -41,12 +41,12 @@ build-release:
 
 build-disk:
 	mkdir -p ./$(BINDIR)
-	rm -f ./$(BINDIR)/$(DISKNAME)
+#	rm -f ./$(BINDIR)/$(DISKNAME)
 #	mkdir -p /mnt/$(DISKNAME)
 
 	# Build and mount the disk
-	dd if=/dev/zero of=./$(BINDIR)/$(DISKNAME) bs=1024K count=10
-	mkfs.ext2 ./$(BINDIR)/$(DISKNAME)
+#	dd if=/dev/zero of=./$(BINDIR)/$(DISKNAME) bs=1024K count=10
+#	mkfs.ext2 ./$(BINDIR)/$(DISKNAME)
 #	mount ./$(BINDIR)/$(DISKNAME) /mnt/$(DISKNAME) 
 
 	# Add some sample data to the disk..

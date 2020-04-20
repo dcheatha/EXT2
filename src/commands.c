@@ -6,10 +6,15 @@
  * @param parameter
  */
 void runLS(State* state, char* parameter) {
-  Path* temp_path = NULL;
-  ;
-  ;
-  ;
+  Directory found_file;
+
+  if (readPath(state, parameter, &found_file) == EXIT_FAILURE) {
+    printf("ls: %s: No such file or directory\n", parameter);
+    return;
+  }
+
+  printf("ls:\n");
+  printDirectory(&found_file);
 }
 
 /**
@@ -20,5 +25,6 @@ void runLS(State* state, char* parameter) {
  */
 void runCommand(State* state, Command command, char* parameter) {
   void (*commands[])(State * state, char* parameter) = { runLS };
+  printf("command=%d parameter=%s\n", command, parameter);
   (*commands[command])(state, parameter);
 }

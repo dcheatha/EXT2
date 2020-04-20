@@ -9,7 +9,7 @@
  * @param bytes Number of bytes to read
  */
 void readBytes(DiskInfo* disk_info, int32_t offset, int8_t* buffer, int64_t bytes) {
-  printf("(R bytes bytes=%li offset=%i)\n", bytes, offset);
+  // printf("(R bytes bytes=%li offset=%i)\n", bytes, offset);
   lseek(disk_info->file_desc, offset, SEEK_SET);
   read(disk_info->file_desc, buffer, bytes);
 }
@@ -23,7 +23,7 @@ void readBytes(DiskInfo* disk_info, int32_t offset, int8_t* buffer, int64_t byte
  * @param bytes
  */
 void writeBytes(DiskInfo* disk_info, int32_t offset, int8_t* buffer, int64_t bytes) {
-  printf("(W bytes bytes=%li offset=%i)\n", bytes, offset);
+  // printf("(W bytes bytes=%li offset=%i)\n", bytes, offset);
   lseek(disk_info->file_desc, offset, SEEK_SET);
   write(disk_info->file_desc, buffer, bytes);
 }
@@ -36,7 +36,7 @@ void writeBytes(DiskInfo* disk_info, int32_t offset, int8_t* buffer, int64_t byt
  * @param buffer
  */
 void readBlock(DiskInfo* disk_info, int64_t block, int8_t* buffer) {
-  printf("[R block block=%li] ", block);
+  // printf("[R block block=%li] ", block);
   readBytes(disk_info, block * disk_info->block_size, buffer, disk_info->block_size);
 }
 
@@ -48,7 +48,7 @@ void readBlock(DiskInfo* disk_info, int64_t block, int8_t* buffer) {
  * @param buffer
  */
 void writeBlock(DiskInfo* disk_info, int64_t block, int8_t* buffer) {
-  printf("[W block block=%li] ", block);
+  // printf("[W block block=%li] ", block);
   writeBytes(disk_info, block * disk_info->block_size, buffer, disk_info->block_size);
 }
 
@@ -63,7 +63,7 @@ void writeBlock(DiskInfo* disk_info, int64_t block, int8_t* buffer) {
  */
 void readBlockBytes(DiskInfo* disk_info, int64_t block, int8_t* buffer, int64_t bytes,
                     int64_t offset) {
-  printf("[R block block=%li bytes=%li offset=%li] ", block, bytes, offset);
+  // printf("[R block block=%li bytes=%li offset=%li] ", block, bytes, offset);
   readBytes(disk_info, block * disk_info->block_size + offset, buffer, bytes);
 }
 
@@ -78,7 +78,7 @@ void readBlockBytes(DiskInfo* disk_info, int64_t block, int8_t* buffer, int64_t 
  */
 void writeBlockBytes(DiskInfo* disk_info, int64_t block, int8_t* buffer, int64_t bytes,
                      int64_t offset) {
-  printf("[W block block=%li bytes=%li offset=%li] ", block, bytes, offset);
+  // printf("[W block block=%li bytes=%li offset=%li] ", block, bytes, offset);
   writeBytes(disk_info, block * disk_info->block_size + offset, buffer, bytes);
 }
 
@@ -128,7 +128,7 @@ void readINode(DiskInfo* disk_info, int32_t number, INode* i_node) {
   int32_t   table_index = (number - 1) % disk_info->inodes_per_group;
 
   readGroupDesc(disk_info, block, &group_desc);
-  printf("{R INode INode=%i} ", number);
+  // printf("{R INode INode=%i} ", number);
   readBlockBytes(disk_info, group_desc.bg_inode_table, (int8_t*)i_node, sizeof(INode),
                  table_index * sizeof(INode));
 }
@@ -146,7 +146,7 @@ void writeINode(DiskInfo* disk_info, int32_t number, INode* i_node) {
   int32_t   table_index = (number - 1) % disk_info->inodes_per_group;
 
   readGroupDesc(disk_info, block, &group_desc);
-  printf("{W INode INode=%i} ", number);
+  // printf("{W INode INode=%i} ", number);
   writeBlockBytes(disk_info, group_desc.bg_inode_table, (int8_t*)i_node, sizeof(INode),
                   table_index * sizeof(INode));
 }
@@ -186,8 +186,8 @@ int32_t readDirectory(DiskInfo* disk_info, INode* inode, Directory* directory, i
   int32_t block_index     = offset / disk_info->block_size;
   int32_t directory_index = offset % disk_info->block_size;
 
-  printf("{R Directory offset=%i (block_index=%i directory_index=%i)} ", offset, block_index,
-         directory_index);
+  // printf("{R Directory offset=%i (block_index=%i directory_index=%i)} ", offset, block_index,
+  //         directory_index);
 
   // Read the first bit of the struct into memory
   readBlockBytes(disk_info, inode->i_block[block_index], (int8_t*)directory, 8, directory_index);
@@ -216,8 +216,8 @@ int32_t writeDirectory(DiskInfo* disk_info, INode* inode, Directory* directory, 
   int32_t directory_index = offset % disk_info->block_size;
   int32_t padding         = 0;
 
-  printf("{W Directory offset=%i (block_index=%i directory_index=%i)} ", offset, block_index,
-         directory_index);
+  // printf("{W Directory offset=%i (block_index=%i directory_index=%i)} ", offset, block_index,
+  //         directory_index);
 
   // Write the first bit of the struct to the disk
   writeBlockBytes(disk_info, inode->i_block[block_index], (int8_t*)directory, 8, directory_index);
@@ -239,12 +239,14 @@ int32_t writeDirectory(DiskInfo* disk_info, INode* inode, Directory* directory, 
 
 /**
  * @brief Searches the disk for a path from the current path
+ * Writes the Directory of the item on EXIT_SUCCESS
  *
  * @param state
  * @param parameter
+ * @param found_file File that was found
  * @return int32_t
  */
-int32_t readPath(State* state, char* parameter) {
+int32_t readPath(State* state, char* parameter, Directory* found_file) {
   if (strlen(parameter) <= 0) {
     return EXIT_SUCCESS;
   }
@@ -274,15 +276,23 @@ int32_t readPath(State* state, char* parameter) {
   parsePath(item_name, parameter, &parameter_offset, &is_more);
 
   do {
+    printf("Now searching for item_name=%s\n", item_name);
+
     readINode(state->disk_info, current_path.inode_number, &current_inode);
     directory_offset +=
       readDirectory(state->disk_info, &current_inode, &current_directory, directory_offset);
 
+    printDirectory(&current_directory);
     // Search until the end for a matching name
     // TODO: Continue searching if the file type is not a dir and we have more path
     while (strcmp(current_directory.name, item_name) != 0 && !isEndDirectory(&current_directory)) {
+      if (directory_offset % 4 != 0) {
+        directory_offset += 4 - (directory_offset % 4);
+      }
+
       directory_offset +=
         readDirectory(state->disk_info, &current_inode, &current_directory, directory_offset);
+      printDirectory(&current_directory);
     }
 
     // If we couldn't find a match and we searched until the end
@@ -298,7 +308,7 @@ int32_t readPath(State* state, char* parameter) {
     parsePath(item_name, parameter, &parameter_offset, &is_more);
   } while (is_more);
 
-  // TODO: Find sane way to return
+  memcpy(found_file, &current_directory, sizeof(Directory));
 
   return EXIT_SUCCESS;
 }

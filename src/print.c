@@ -58,7 +58,7 @@ void printGroupDesc(GroupDesc* group_desc) {
  */
 void printDirectory(Directory* directory) {
   printf("Dir: {\n");
-  printf("%20s: %s\n", "Name", directory->name);
+  printf("%20s: %10s\n", "Name", directory->name);
   printf("%20s: %10u\n", "Name Length", directory->name_len);
   printf("%20s: %10u\n", "INode", directory->inode);
   printf("%20s: %10u\n", "Rec Len", directory->rec_len);

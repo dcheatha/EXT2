@@ -15,11 +15,12 @@ void initalizeState(State* state) {
   state->user.user_id  = getuid();
   state->user.group_id = getgid();
 
-  Path* root_path  = (Path*)calloc(1, sizeof(Path));
+  Path* root_path         = (Path*)calloc(1, sizeof(Path));
   root_path->inode_number = EXT2_ROOT_INO;
   strcpy(root_path->name, "/");
 
   state->path_root = root_path;
+  state->path_cwd  = root_path;
 }
 
 /**
@@ -37,6 +38,8 @@ int32_t main(int32_t argc, char** argv) {
     return EXIT_FAILURE;
   }
 
+  printf("Mounting disk=%s\n", *(argv + 1));
+
   disk_info.file_desc = open(*(argv + 1), O_RDWR);
 
   if (disk_info.file_desc == 0) {
@@ -44,7 +47,7 @@ int32_t main(int32_t argc, char** argv) {
     return EXIT_FAILURE;
   }
 
-  State state{ &ext_info, &disk_info };
+  State state = { &ext_info, &disk_info };
   initalizeState(&state);
 
   uint32_t command_id;
@@ -56,10 +59,10 @@ int32_t main(int32_t argc, char** argv) {
     printMenu();
     printf("Please choose a command: ");
     scanf("%u", &command_id);
-    command_id += 1;
+    command_id -= 1;
 
     if (command_id > kCommandCount) {
-      printf("Command %u does not exist.\n", command_id - 1);
+      printf("Command %u does not exist.\n", command_id + 1);
       continue;
     }
 

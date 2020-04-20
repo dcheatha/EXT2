@@ -131,4 +131,14 @@ int readDirectory(DiskInfo* disk_info, INode* inode, Directory* directory, int32
  */
 int writeDirectory(DiskInfo* disk_info, INode* inode, Directory* directory, int32_t offset);
 
+/**
+ * @brief Give this a path string and it returns the Dir for the file, if it exists
+ *
+ * @param state
+ * @param parameter
+ * @param found_file
+ * @return int32_t
+ */
+int32_t readPath(State* state, char* parameter, Directory* found_file);
+
 #endif
