@@ -23,7 +23,7 @@ void initializeFilesystem(DiskInfo* disk_info, ExtInfo* ext_info);
  * @param bit
  * @return int
  */
-int testBit(int8_t byte, int8_t bit);
+int32_t testBit(int8_t byte, int8_t bit);
 
 /**
  * @brief Finds a free bit in a bitmap
@@ -32,7 +32,7 @@ int testBit(int8_t byte, int8_t bit);
  * @param bit to start at
  * @return int
  */
-int findFreeBit(int8_t data, int8_t start);
+int32_t findFreeBit(int8_t data, int8_t start);
 
 /**
  * @brief Like strtok, but not useless

@@ -22,13 +22,28 @@ void runLS(State* state, char* parameter) {
 }
 
 /**
+ * @brief Runs MKDIR
+ *
+ * @param state
+ * @param parameter
+ */
+void runMKDIR(State* state, char* parameter) {
+  Directory parent_folder;
+
+  if (readPathParent(state, parameter, &parent_folder) == EXIT_FAILURE) {
+    printf("mkdir: cannot create directory: '%s': No such file or directory\n", parameter);
+    return;
+  }
+}
+
+/**
  * @brief Runs a command on the filesystem
  *
  * @param command
  * @param parameter
  */
 void runCommand(State* state, Command command, char* parameter) {
-  void (*commands[])(State * state, char* parameter) = { runLS };
+  void (*commands[])(State * state, char* parameter) = { runLS, runMKDIR };
   printf("command=%d parameter=%s\n", command, parameter);
   (*commands[command])(state, parameter);
 }

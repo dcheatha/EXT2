@@ -5,8 +5,9 @@
  */
 void printMenu() {
   for (int32_t pos = 0; pos < kCommandCount; pos++) {
-    printf("(%02i) %-10s\n", pos + 1, kPrintCommands[pos]);
+    printf("%s ", kPrintCommands[pos]);
   }
+  printf("\n");
 }
 
 /**
@@ -66,7 +67,7 @@ void printMode(uint16_t mode) {
   }
 
   // There are 9 total modes
-  for (int pos = 0; pos < 9; pos++) {
+  for (int32_t pos = 0; pos < 9; pos++) {
     uint16_t current_value = 0x100 >> (pos - 0);
     if (mode & current_value) {
       printf("%c", perms[pos % 3]);
@@ -113,7 +114,7 @@ void printINode(INode* inode) {
   printf("%20s: %10i\n", "Size", inode->i_size);
   printf("%20s: %10i\n", "Blocks", inode->i_blocks);
 
-  for (int pos = 0; pos < 15; pos++) {
+  for (int32_t pos = 0; pos < 15; pos++) {
     printf("%15s[%3i]: %10i\n", "Block", pos, inode->i_block[pos]);
   }
 

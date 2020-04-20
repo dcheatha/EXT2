@@ -61,7 +61,7 @@ void initializeFilesystem(DiskInfo* disk_info, ExtInfo* ext_info) {
  * @param bit
  * @return int
  */
-int testBit(int8_t data, int8_t bit) {
+int32_t testBit(int8_t data, int8_t bit) {
   bit = 1 << bit;
   return (bit & data) != 0;
 }
@@ -72,7 +72,7 @@ int testBit(int8_t data, int8_t bit) {
  * @param data
  * @return int
  */
-int findFreeBit(int8_t data, int8_t start) {
+int32_t findFreeBit(int8_t data, int8_t start) {
   for (int8_t bit_pos = start; bit_pos < 8 * sizeof(int8_t); bit_pos++) {
     if (!testBit(data, bit_pos)) {
       return bit_pos;

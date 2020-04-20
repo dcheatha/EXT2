@@ -118,7 +118,7 @@ void readINodeData(DiskInfo* disk_info, INode* inode, int8_t* buffer, int32_t by
  * @param offset
  * @return int
  */
-int readDirectory(DiskInfo* disk_info, INode* inode, Directory* directory, int32_t offset);
+int32_t readDirectory(DiskInfo* disk_info, INode* inode, Directory* directory, int32_t offset);
 
 /**
  * @brief Writes a directory entry given an INode
@@ -129,7 +129,7 @@ int readDirectory(DiskInfo* disk_info, INode* inode, Directory* directory, int32
  * @param offset
  * @return int
  */
-int writeDirectory(DiskInfo* disk_info, INode* inode, Directory* directory, int32_t offset);
+int32_t writeDirectory(DiskInfo* disk_info, INode* inode, Directory* directory, int32_t offset);
 
 /**
  * @brief Give this a path string and it returns the Dir for the file, if it exists
@@ -140,5 +140,24 @@ int writeDirectory(DiskInfo* disk_info, INode* inode, Directory* directory, int3
  * @return int32_t
  */
 int32_t readPath(State* state, char* parameter, Directory* found_file);
+
+/**
+ * @brief Like readPath, but returns the parent dir
+ *
+ * @param state
+ * @param parameter
+ * @param found_file
+ * @return int32_t
+ */
+int32_t readPathParent(State* state, char* parameter, Directory* found_file);
+
+/**
+ * @brief Determines if a path exists
+ *
+ * @param state
+ * @param parameter
+ * @return int8_t
+ */
+int8_t readPathExists(State* state, char* parameter);
 
 #endif

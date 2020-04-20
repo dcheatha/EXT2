@@ -6,7 +6,7 @@
  * @param directory
  * @return int
  */
-int isEndDirectory(Directory* directory) {
+int32_t isEndDirectory(Directory* directory) {
   if (directory->file_type == EXT2_FT_UNKNOWN) {
     return 1;
   }
@@ -50,8 +50,8 @@ void allocateDirectoryEntry(DiskInfo* disk_info, int32_t inode_start, Directory*
       // Now write the end dir back:
       write_index = writeDirectory(disk_info, &root_inode, &root_dir, write_index);
 
-      // Now increase INode link count
-      // root_inode.i_links_count++;
+      // Now increase INode link count (The root dir now links to it)
+      root_inode.i_links_count++;
       root_inode.i_atime = now;
       // And write the INode back to disk:
       writeINode(disk_info, inode_start, &root_inode);

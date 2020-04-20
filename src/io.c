@@ -161,7 +161,7 @@ void readINodeData(DiskInfo* disk_info, INode* inode, int8_t* buffer, int32_t by
   int32_t buffer_offset = 0;
 
   // TODO: Support links
-  for (int pos = 0; pos < 15; pos++) {
+  for (int32_t pos = 0; pos < 15; pos++) {
     if (inode->i_block[pos] == 0) {
       continue;
     }
@@ -247,7 +247,20 @@ int32_t writeDirectory(DiskInfo* disk_info, INode* inode, Directory* directory, 
  * @return int32_t
  */
 int32_t readPath(State* state, char* parameter, Directory* found_file) {
+  // We want the current dir:
   if (strlen(parameter) <= 0) {
+    INode inode;
+    readINode(state->disk_info, state->path_cwd->inode_number, &inode);
+    readDirectory(state->disk_info, &inode, found_file, 0);
+    return EXIT_SUCCESS;
+  }
+
+  // We want root so grab the dir of root:
+  if (parameter[0] == '/' && strlen(parameter) == 1) {
+    clearPath(state, state->path_cwd);
+    INode inode;
+    readINode(state->disk_info, EXT2_ROOT_INO, &inode);
+    readDirectory(state->disk_info, &inode, found_file, 0);
     return EXIT_SUCCESS;
   }
 
@@ -307,4 +320,40 @@ int32_t readPath(State* state, char* parameter, Directory* found_file) {
   memcpy(found_file, &current_directory, sizeof(Directory));
 
   return EXIT_SUCCESS;
+}
+
+/**
+ * @brief Like readPath, but returns the parent of the path instead
+ *
+ * @param state
+ * @param parameter
+ * @param found_file
+ * @return int32_t
+ */
+int32_t readPathParent(State* state, char* parameter, Directory* found_file) {
+  int32_t parameter_length      = strlen(parameter);
+  char    parameter_parent[255] = { 0 };
+
+  for (int32_t pos = parameter_length; pos > 0; pos--) {
+    if (parameter[pos] == '/') {
+      strncpy(parameter_parent, parameter, pos);
+      break;
+    }
+  }
+
+  printf("parent=%s\n", parameter_parent);
+
+  return readPath(state, parameter_parent, found_file);
+}
+
+/**
+ * @brief Checks if a path exists
+ *
+ * @param state
+ * @param parameter
+ * @return int8_t
+ */
+int8_t readPathExists(State* state, char* parameter) {
+  Directory file;
+  return readPath(state, parameter, &file);
 }

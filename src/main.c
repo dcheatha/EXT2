@@ -24,6 +24,44 @@ void initalizeState(State* state) {
 }
 
 /**
+ * @brief Grabs a command from STDIN
+ *
+ * @param parameter
+ * @return int32_t
+ */
+uint32_t grabCommand(char parameter[255]) {
+  char command[255] = { 0 };
+  char buffer[255]  = { 0 };
+
+  scanf("%[^\n]%*c", buffer);
+
+  // Split the string, dump part after command into parameter
+  for (int32_t pos = 0; pos < 255; pos++) {
+    if (buffer[pos] == '\0') {
+      bzero(parameter, sizeof(parameter));
+      strcpy(command, buffer);
+      break;
+    }
+
+    if (buffer[pos] == ' ') {
+      buffer[pos] = '\0';
+      strcpy(command, buffer);
+      strcpy(parameter, buffer + pos + 1);
+      break;
+    }
+  }
+
+  // Get the command id
+  for (int32_t pos = 0; pos < sizeof(kPrintCommands) / sizeof(char*); pos++) {
+    if (strcasecmp(command, kPrintCommands[pos]) == 0) {
+      return pos;
+    }
+  }
+
+  return -1;
+}
+
+/**
  * @brief Simulates the EXT2 Filesystem
  *
  * @param argc
@@ -56,18 +94,15 @@ int32_t main(int32_t argc, char** argv) {
   while (1) {
     bzero(parameter, sizeof(parameter));
 
-    printMenu();
-    printf("Please choose a command: ");
-    scanf("%u", &command_id);
-    command_id -= 1;
+    // printMenu();
+
+    printf("%d\\%d> ", state.user.group_id, state.user.user_id);
+    command_id = grabCommand(parameter);
 
     if (command_id > kCommandCount) {
-      printf("Command %u does not exist.\n", command_id + 1);
+      printf("ext2: command not found\n", command_id + 1);
       continue;
     }
-
-    printf("Please enter a parameter: ");
-    scanf("%s", &parameter);
 
     // Run the command
     runCommand(&state, (Command)command_id, parameter);

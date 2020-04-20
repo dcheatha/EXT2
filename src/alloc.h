@@ -22,7 +22,7 @@ void allocateDirectoryEntry(DiskInfo* disk_info, int32_t inode_start, Directory*
  * @param directory
  * @return int
  */
-int isEndDirectory(Directory* directory);
+int32_t isEndDirectory(Directory* directory);
 
 /**
  * @brief Allocates an INode
