@@ -41,7 +41,8 @@ build-release:
 
 build-disk:
 	mkdir -p ./$(BINDIR)
-#	rm -f ./$(BINDIR)/$(DISKNAME)
+	rm -f ./$(BINDIR)/$(DISKNAME)
+	cp ./$(BINDIR)/$(DISKNAME).bak ./$(BINDIR)/$(DISKNAME)
 #	mkdir -p /mnt/$(DISKNAME)
 
 	# Build and mount the disk

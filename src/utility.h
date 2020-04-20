@@ -52,4 +52,20 @@ void parsePath(char* destination, char* input, int32_t* offset, int8_t* is_dir);
  */
 void clearPath(State* state, Path* path);
 
+/**
+ * @brief Get the Parameter Stub object
+ *
+ * @param parameter
+ * @param stub
+ */
+void getParameterStub(char* parameter, char* stub);
+
+/**
+ * @brief Get the Default Mode of an INode
+ *
+ * @param file_type
+ * @return int16_t
+ */
+int16_t getDefaultMode(int16_t file_type);
+
 #endif

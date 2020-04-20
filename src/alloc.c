@@ -15,6 +15,39 @@ int32_t isEndDirectory(Directory* directory) {
 }
 
 /**
+ * @brief Allocates a block
+ *
+ * @param disk_info
+ * @param ext_info
+ * @return int32_t
+ */
+int32_t allocateBlock(DiskInfo* disk_info, ExtInfo* ext_info) {
+  GroupDesc group_desc;
+  int8_t    buffer[disk_info->block_size];
+
+  for (int32_t group = 0; group < disk_info->group_count; group++) {
+    readGroupDesc(disk_info, group, &group_desc);
+    readBlock(disk_info, group_desc.bg_block_bitmap, (int8_t*)&buffer);
+
+    for (int32_t pos = 0; pos < disk_info->blocks_per_group / 8; pos++) {
+      int32_t bit = findFreeBit(buffer[pos], 0);
+
+      if (bit != -1) {
+        int32_t free_block_pos = 1 + bit + (pos * 8) + (group * disk_info->blocks_per_group);
+
+        // Mark bitmap as used, thus alloc'ing it
+        buffer[pos] |= (1 << bit);
+
+        // Just write the entire block back to the disk
+        writeBlock(disk_info, group_desc.bg_block_bitmap, (int8_t*)&buffer);
+
+        return free_block_pos;
+      }
+    }
+  }
+}
+
+/**
  * @brief Appends a dir table with a new entry
  *
  * @param disk_info
@@ -37,12 +70,16 @@ void allocateDirectoryEntry(DiskInfo* disk_info, int32_t inode_start, Directory*
     }
 
     read_index += readDirectory(disk_info, &root_inode, &root_dir, read_index);
+    printDirectory(disk_info, &root_dir);
 
     if (isEndDirectory(&root_dir)) {
       // We've found the end dir! Now we overrwrite it with the new dir:
 
       // Jump to the start of the end dir:
       write_index = read_index - 8 - root_dir.name_len;
+      if (write_index % 4 != 0) {
+        write_index -= 4 - (write_index % 4);
+      }
 
       // Write the new directory entry to the disk:
       write_index = writeDirectory(disk_info, &root_inode, directory, write_index);
@@ -55,6 +92,7 @@ void allocateDirectoryEntry(DiskInfo* disk_info, int32_t inode_start, Directory*
       root_inode.i_atime = now;
       // And write the INode back to disk:
       writeINode(disk_info, inode_start, &root_inode);
+      return;
     }
   }
 }
@@ -67,25 +105,41 @@ void allocateDirectoryEntry(DiskInfo* disk_info, int32_t inode_start, Directory*
  * @param ext_info
  * @return int32_t
  */
-int32_t allocateINode(DiskInfo* disk_info, ExtInfo* ext_info) {
+int32_t allocateINode(State* state) {
   GroupDesc group_desc;
-  int8_t    buffer[disk_info->block_size];
+  int8_t    buffer[state->disk_info->block_size];
 
-  for (int32_t group = 0; group < disk_info->group_count; group++) {
-    readGroupDesc(disk_info, group, &group_desc);
-    readBlock(disk_info, group_desc.bg_inode_bitmap, (int8_t*)&buffer);
+  for (int32_t group = 0; group < state->disk_info->group_count; group++) {
+    readGroupDesc(state->disk_info, group, &group_desc);
+    readBlock(state->disk_info, group_desc.bg_inode_bitmap, (int8_t*)&buffer);
 
-    for (int32_t pos = 0; pos < disk_info->inodes_per_group / 8; pos++) {
+    for (int32_t pos = 0; pos < state->disk_info->inodes_per_group / 8; pos++) {
       int32_t bit = findFreeBit(buffer[pos], 0);
 
       if (bit != -1) {
-        int32_t free_inode_pos = 1 + bit + (pos * 8) + (group * disk_info->inodes_per_group);
+        int32_t free_inode_pos = 1 + bit + (pos * 8) + (group * state->disk_info->inodes_per_group);
 
         // Mark bitmap as used, thus alloc'ing it
-        buffer[pos] ^= (1 << pos);
+        buffer[pos] |= (1 << (bit));
 
         // Just write the entire block back to the disk
-        writeBlock(disk_info, group_desc.bg_inode_bitmap, (int8_t*)&buffer);
+        writeBlock(state->disk_info, group_desc.bg_inode_bitmap, (int8_t*)&buffer);
+
+        int16_t current_time = time(NULL);
+        // Prep the INode with our standard data so we don't have to deal with it later:
+        INode inode = { getDefaultMode(EXT2_FT_REG_FILE),
+                        state->user.user_id,
+                        0,
+                        current_time,
+                        current_time,
+                        current_time,
+                        0,
+                        state->user.group_id,
+                        0,
+                        0,
+                        0 };
+
+        writeINode(state->disk_info, free_inode_pos, &inode);
 
         // Now we know which INode we have
         return free_inode_pos;
@@ -94,4 +148,43 @@ int32_t allocateINode(DiskInfo* disk_info, ExtInfo* ext_info) {
   }
 
   return -1;
+}
+
+/**
+ * @brief Allocs a dir table. new_dir must be populated prior to calling
+ *
+ * @param state
+ * @param parent_dir
+ * @param new_dir
+ */
+void allocateDirectoryTable(State* state, Directory* parent_dir, Directory* new_dir) {
+  int32_t inode_no = allocateINode(state);
+  int32_t block_no = allocateBlock(state->disk_info, state->ext_info);
+
+  printf("Allocing inode=%d block=%d\n", inode_no, block_no);
+
+  // Create the INode and dump it to the disk
+  INode inode;
+  readINode(state->disk_info, inode_no, &inode);
+
+  inode.i_mode |= EXT2_S_IFDIR;
+  inode.i_block[0] = block_no;
+  inode.i_blocks   = 1;
+
+  writeINode(state->disk_info, inode_no, &inode);
+
+  new_dir->name_len = strlen(new_dir->name) - 1;
+
+  // Add . .. and end dirs
+  Directory dirs[] = { { inode_no, 0, 1, EXT2_FT_DIR, "." },
+                       { parent_dir->inode, 0, 2, EXT2_FT_DIR, ".." },
+                       { 0, 0, 0, EXT2_FT_UNKNOWN, 0 } };
+
+  for (int32_t pos = 0, offset = 0; pos < sizeof(dirs) / sizeof(Directory); pos++) {
+    if (offset % 4 != 0) {
+      offset += 4 - (offset % 4);
+    }
+
+    offset += writeDirectory(state->disk_info, &inode, &dirs[pos], offset);
+  }
 }

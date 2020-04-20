@@ -29,14 +29,14 @@ void initalizeState(State* state) {
  * @param parameter
  * @return int32_t
  */
-uint32_t grabCommand(char parameter[255]) {
-  char command[255] = { 0 };
-  char buffer[255]  = { 0 };
+uint32_t grabCommand(char parameter[EXT2_NAME_LEN]) {
+  char command[EXT2_NAME_LEN] = { 0 };
+  char buffer[EXT2_NAME_LEN]  = { 0 };
 
   scanf("%[^\n]%*c", buffer);
 
   // Split the string, dump part after command into parameter
-  for (int32_t pos = 0; pos < 255; pos++) {
+  for (int32_t pos = 0; pos < EXT2_NAME_LEN; pos++) {
     if (buffer[pos] == '\0') {
       bzero(parameter, sizeof(parameter));
       strcpy(command, buffer);
@@ -89,7 +89,7 @@ int32_t main(int32_t argc, char** argv) {
   initalizeState(&state);
 
   uint32_t command_id;
-  char     parameter[255];
+  char     parameter[EXT2_NAME_LEN];
 
   while (1) {
     bzero(parameter, sizeof(parameter));

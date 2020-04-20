@@ -186,8 +186,8 @@ int32_t readDirectory(DiskInfo* disk_info, INode* inode, Directory* directory, i
   int32_t block_index     = offset / disk_info->block_size;
   int32_t directory_index = offset % disk_info->block_size;
 
-  // printf("{R Directory offset=%i (block_index=%i directory_index=%i)} ", offset, block_index,
-  //         directory_index);
+  // printf("{R Directory offset=%i (block_index=%i directory_index=%i)}\n", offset, block_index,
+  //      directory_index);
 
   // Read the first bit of the struct into memory
   readBlockBytes(disk_info, inode->i_block[block_index], (int8_t*)directory, 8, directory_index);
@@ -216,8 +216,13 @@ int32_t writeDirectory(DiskInfo* disk_info, INode* inode, Directory* directory, 
   int32_t directory_index = offset % disk_info->block_size;
   int32_t padding         = 0;
 
-  // printf("{W Directory offset=%i (block_index=%i directory_index=%i)} ", offset, block_index,
-  //         directory_index);
+  // printf("{W Directory offset=%i (block_index=%i directory_index=%i)}\n", offset, block_index,
+  //      directory_index);
+
+  // Calculate the rec len
+  directory->rec_len = 8 + directory->name_len;
+
+  printf("rec_len=%i\n", directory->rec_len);
 
   // Write the first bit of the struct to the disk
   writeBlockBytes(disk_info, inode->i_block[block_index], (int8_t*)directory, 8, directory_index);
@@ -331,8 +336,8 @@ int32_t readPath(State* state, char* parameter, Directory* found_file) {
  * @return int32_t
  */
 int32_t readPathParent(State* state, char* parameter, Directory* found_file) {
-  int32_t parameter_length      = strlen(parameter);
-  char    parameter_parent[255] = { 0 };
+  int32_t parameter_length                = strlen(parameter);
+  char    parameter_parent[EXT2_NAME_LEN] = { 0 };
 
   for (int32_t pos = parameter_length; pos > 0; pos--) {
     if (parameter[pos] == '/') {
@@ -340,8 +345,6 @@ int32_t readPathParent(State* state, char* parameter, Directory* found_file) {
       break;
     }
   }
-
-  printf("parent=%s\n", parameter_parent);
 
   return readPath(state, parameter_parent, found_file);
 }

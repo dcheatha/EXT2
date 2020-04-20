@@ -127,3 +127,34 @@ void clearPath(State* state, Path* path) {
 
   state->path_cwd = state->path_root;
 }
+
+/**
+ * @brief Get the Parameter Stub
+ *
+ * @param parameter
+ * @param stub
+ */
+void getParameterStub(char* parameter, char* stub) {
+  int32_t parameter_len = strlen(parameter);
+
+  for (int pos = parameter_len; pos > 0; pos--) {
+    if (parameter[pos] == '/') {
+      strncpy(stub, parameter + pos + 1, parameter_len - pos - 1);
+      return;
+    }
+  }
+  strcpy(stub, parameter);
+}
+
+/**
+ * @brief Get the Default Mode of an INode
+ *
+ * @param file_type
+ * @return int16_t
+ */
+int16_t getDefaultMode(int16_t file_type) {
+  switch (file_type) {
+    case EXT2_FT_DIR: return EXT2_S_IFDIR | EXT2_S_IRWXU | EXT2_S_IRWXG;
+    default: return EXT2_S_IRWXU | EXT2_S_IRWXG;
+  }
+}

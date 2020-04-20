@@ -3,6 +3,30 @@
 
 #include <ext2fs/ext2_fs.h>
 
+#define EXT2_S_IFMT 0xF000   /* format mask  */
+#define EXT2_S_IFSOCK 0xC000 /* socket */
+#define EXT2_S_IFLNK 0xA000  /* symbolic link */
+#define EXT2_S_IFREG 0x8000  /* regular file */
+#define EXT2_S_IFBLK 0x6000  /* block device */
+#define EXT2_S_IFDIR 0x4000  /* directory */
+#define EXT2_S_IFCHR 0x2000  /* character device */
+#define EXT2_S_IFIFO 0x1000  /* fifo */
+#define EXT2_S_ISUID 0x0800  /* SUID */
+#define EXT2_S_ISGID 0x0400  /* SGID */
+#define EXT2_S_ISVTX 0x0200  /* sticky bit */
+#define EXT2_S_IRWXU 0x01C0  /* user access rights mask */
+#define EXT2_S_IRUSR 0x0100  /* read */
+#define EXT2_S_IWUSR 0x0080  /* write */
+#define EXT2_S_IXUSR 0x0040  /* execute */
+#define EXT2_S_IRWXG 0x0038  /* group access rights mask */
+#define EXT2_S_IRGRP 0x0020  /* read */
+#define EXT2_S_IWGRP 0x0010  /* write */
+#define EXT2_S_IXGRP 0x0008  /* execute */
+#define EXT2_S_IRWXO 0x0007  /* others access rights mask */
+#define EXT2_S_IROTH 0x0004  /* read */
+#define EXT2_S_IWOTH 0x0002  /* write */
+#define EXT2_S_IXOTH 0x0001  /* execute */
+
 /**
  * @brief Constant offset of the superblock
  */
