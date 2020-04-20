@@ -43,15 +43,12 @@ void runMKDIR(State* state, char* parameter) {
   Directory new_dir;
   getParameterStub(parameter, new_dir.name);
 
-  new_dir.name_len  = strlen(new_dir.name) - 1;
+  new_dir.name_len  = strlen(new_dir.name);
   new_dir.file_type = EXT2_FT_DIR;
-  new_dir.rec_len   = 8 + strlen(new_dir.name) - 1;
+  new_dir.rec_len   = 8 + strlen(new_dir.name);
 
-  printDirectory(state->disk_info, &new_dir);
   allocateDirectoryTable(state, &parent_folder, &new_dir);
-  printDirectory(state->disk_info, &new_dir);
   allocateDirectoryEntry(state->disk_info, parent_folder.inode, &new_dir);
-  printDirectory(state->disk_info, &new_dir);
 }
 
 /**

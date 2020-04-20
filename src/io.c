@@ -186,8 +186,8 @@ int32_t readDirectory(DiskInfo* disk_info, INode* inode, Directory* directory, i
   int32_t block_index     = offset / disk_info->block_size;
   int32_t directory_index = offset % disk_info->block_size;
 
-  // printf("{R Directory offset=%i (block_index=%i directory_index=%i)}\n", offset, block_index,
-  //      directory_index);
+  // printf("{R Directory offset=%i (block=%i directory_index=%i)}\n", offset,
+  //       inode->i_block[block_index], directory_index);
 
   // Read the first bit of the struct into memory
   readBlockBytes(disk_info, inode->i_block[block_index], (int8_t*)directory, 8, directory_index);
@@ -216,13 +216,11 @@ int32_t writeDirectory(DiskInfo* disk_info, INode* inode, Directory* directory, 
   int32_t directory_index = offset % disk_info->block_size;
   int32_t padding         = 0;
 
-  // printf("{W Directory offset=%i (block_index=%i directory_index=%i)}\n", offset, block_index,
-  //      directory_index);
+  // printf("{W Directory offset=%i (block=%i directory_index=%i)}\n", offset,
+  //       inode->i_block[block_index], directory_index);
 
   // Calculate the rec len
   directory->rec_len = 8 + directory->name_len;
-
-  printf("rec_len=%i\n", directory->rec_len);
 
   // Write the first bit of the struct to the disk
   writeBlockBytes(disk_info, inode->i_block[block_index], (int8_t*)directory, 8, directory_index);

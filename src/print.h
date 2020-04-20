@@ -33,6 +33,13 @@ void printMenu();
 void printDiskInfomation(ExtInfo* ext_info, DiskInfo* disk_info);
 
 /**
+ * @brief Prints an INode
+ *
+ * @param inode
+ */
+void printINode(INode* inode);
+
+/**
  * @brief Prints info for a single dir entry
  *
  * @param directory

@@ -70,7 +70,6 @@ void allocateDirectoryEntry(DiskInfo* disk_info, int32_t inode_start, Directory*
     }
 
     read_index += readDirectory(disk_info, &root_inode, &root_dir, read_index);
-    printDirectory(disk_info, &root_dir);
 
     if (isEndDirectory(&root_dir)) {
       // We've found the end dir! Now we overrwrite it with the new dir:
@@ -82,10 +81,10 @@ void allocateDirectoryEntry(DiskInfo* disk_info, int32_t inode_start, Directory*
       }
 
       // Write the new directory entry to the disk:
-      write_index = writeDirectory(disk_info, &root_inode, directory, write_index);
+      write_index += writeDirectory(disk_info, &root_inode, directory, write_index);
 
       // Now write the end dir back:
-      write_index = writeDirectory(disk_info, &root_inode, &root_dir, write_index);
+      write_index += writeDirectory(disk_info, &root_inode, &root_dir, write_index);
 
       // Now increase INode link count (The root dir now links to it)
       root_inode.i_links_count++;
@@ -161,19 +160,24 @@ void allocateDirectoryTable(State* state, Directory* parent_dir, Directory* new_
   int32_t inode_no = allocateINode(state);
   int32_t block_no = allocateBlock(state->disk_info, state->ext_info);
 
-  printf("Allocing inode=%d block=%d\n", inode_no, block_no);
-
   // Create the INode and dump it to the disk
   INode inode;
   readINode(state->disk_info, inode_no, &inode);
+  bzero(&inode, sizeof(INode));
 
   inode.i_mode |= EXT2_S_IFDIR;
-  inode.i_block[0] = block_no;
-  inode.i_blocks   = 1;
+  inode.i_mode |= getDefaultMode(EXT2_FT_DIR);
+  inode.i_block[0]    = block_no;
+  inode.i_blocks      = 1;
+  inode.i_links_count = 1;
+
+  inode.i_atime = time(NULL);
+  inode.i_ctime = time(NULL);
+  inode.i_mtime = time(NULL);
 
   writeINode(state->disk_info, inode_no, &inode);
 
-  new_dir->name_len = strlen(new_dir->name) - 1;
+  new_dir->inode = inode_no;
 
   // Add . .. and end dirs
   Directory dirs[] = { { inode_no, 0, 1, EXT2_FT_DIR, "." },
