@@ -37,7 +37,7 @@ void printDiskInfomation(ExtInfo* ext_info, DiskInfo* disk_info);
  *
  * @param directory
  */
-void printDirectory(Directory* directory);
+void printDirectory(DiskInfo* disk_info, Directory* directory);
 
 /**
  * @brief Prints an entire dir table

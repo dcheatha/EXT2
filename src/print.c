@@ -15,7 +15,7 @@ void printMenu() {
  * @param ext_info
  */
 void printDiskInfomation(ExtInfo* ext_info, DiskInfo* disk_info) {
-  printf("EX2 Filesystem loaded: {\n");
+  printf("\nEX2 Filesystem loaded: {\n");
   printf("%20s: %10s\n", "Volume Name", ext_info->super_block.s_volume_name);
   printf("%20s: %10s\n", "Last Mount Path", ext_info->super_block.s_last_mounted);
 
@@ -33,7 +33,7 @@ void printDiskInfomation(ExtInfo* ext_info, DiskInfo* disk_info) {
   printf("%20s: %10u\n", "Free INodes", ext_info->super_block.s_free_inodes_count);
   printf("%20s: %10u\n", "INodes per Group", ext_info->super_block.s_inodes_per_group);
 
-  printf("}\n");
+  printf("}\n\n");
 }
 
 /**
@@ -52,18 +52,55 @@ void printGroupDesc(GroupDesc* group_desc) {
 }
 
 /**
+ * @brief Prints the mode of a file
+ *
+ * @param mode
+ */
+void printMode(uint16_t mode) {
+  static const char perms[] = { 'r', 'w', 'x' };
+
+  if (mode & 0x4000) {
+    printf("d");
+  } else {
+    printf("-");
+  }
+
+  // There are 9 total modes
+  for (int pos = 0; pos < 9; pos++) {
+    uint16_t current_value = 0x100 >> (pos - 0);
+    if (mode & current_value) {
+      printf("%c", perms[pos % 3]);
+    } else {
+      printf("-");
+    }
+  }
+}
+
+/**
  * @brief Prints a dir
  *
  * @param directory
  */
-void printDirectory(Directory* directory) {
-  printf("Dir: {\n");
-  printf("%20s: %10s\n", "Name", directory->name);
-  printf("%20s: %10u\n", "Name Length", directory->name_len);
-  printf("%20s: %10u\n", "INode", directory->inode);
-  printf("%20s: %10u\n", "Rec Len", directory->rec_len);
-  printf("%20s: %10u\n", "File Type", directory->file_type);
-  printf("}\n");
+void printDirectory(DiskInfo* disk_info, Directory* directory) {
+  INode inode;
+
+  // Pull the INode up from the disk
+  readINode(disk_info, directory->inode, &inode);
+
+  struct tm* time_struct;
+  char       formatted_time[20] = { 0 };
+
+  time_struct = localtime((time_t*)&inode.i_mtime);
+  strftime(formatted_time, 20, "%d %b %H:%M", time_struct);
+
+  printf("%d ", inode.i_blocks);
+  printMode(inode.i_mode);
+  printf("%2d ", inode.i_links_count);
+  printf("%2d ", inode.i_uid);
+  printf("%2d ", inode.i_gid);
+  printf("%6d ", inode.i_size);
+  printf("%s ", formatted_time);
+  printf("%s\n", directory->name);
 }
 
 /**
@@ -80,8 +117,9 @@ void printINode(INode* inode) {
     printf("%15s[%3i]: %10i\n", "Block", pos, inode->i_block[pos]);
   }
 
-  printf("%20s: %10i\n", "Mode", inode->i_mode);
-  printf("}\n");
+  printf("%20s: ", "Mode");
+  printMode(inode->i_mode);
+  printf("\n}\n");
 }
 
 /**
@@ -95,9 +133,7 @@ void printDirectoryTable(DiskInfo* disk_info, int32_t inode_start) {
   Directory root_dir;
   int32_t   dir_index = 0;
 
-  printf("Dir Table: {\n");
   readINode(disk_info, inode_start, &root_inode);
-  printf("Root INode infomation:\n");
 
   while (1) {
     if (dir_index % 4 != 0) {
@@ -110,8 +146,9 @@ void printDirectoryTable(DiskInfo* disk_info, int32_t inode_start) {
       break;
     }
 
-    printDirectory(&root_dir);
+    printDirectory(disk_info, &root_dir);
 
+    /*
     if (root_dir.file_type == EXT2_FT_REG_FILE) {
       INode data_inode;
       readINode(disk_info, root_dir.inode, &data_inode);
@@ -121,8 +158,8 @@ void printDirectoryTable(DiskInfo* disk_info, int32_t inode_start) {
       readINodeData(disk_info, &data_inode, (int8_t*)&buffer, 1024);
       printf("%20s: %s\n", "Data", buffer);
     }
+    */
   }
-  printf("}\n");
 }
 
 /**

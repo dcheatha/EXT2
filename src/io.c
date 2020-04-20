@@ -276,13 +276,10 @@ int32_t readPath(State* state, char* parameter, Directory* found_file) {
   parsePath(item_name, parameter, &parameter_offset, &is_more);
 
   do {
-    printf("Now searching for item_name=%s\n", item_name);
-
     readINode(state->disk_info, current_path.inode_number, &current_inode);
     directory_offset +=
       readDirectory(state->disk_info, &current_inode, &current_directory, directory_offset);
 
-    printDirectory(&current_directory);
     // Search until the end for a matching name
     // TODO: Continue searching if the file type is not a dir and we have more path
     while (strcmp(current_directory.name, item_name) != 0 && !isEndDirectory(&current_directory)) {
@@ -292,7 +289,6 @@ int32_t readPath(State* state, char* parameter, Directory* found_file) {
 
       directory_offset +=
         readDirectory(state->disk_info, &current_inode, &current_directory, directory_offset);
-      printDirectory(&current_directory);
     }
 
     // If we couldn't find a match and we searched until the end
