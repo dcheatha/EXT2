@@ -289,9 +289,10 @@ int32_t readPath(State* state, char* parameter, Directory* found_file) {
   int32_t   directory_offset = 0;
 
   // Get the first bit of the path
-  parsePath(item_name, parameter, &parameter_offset, &is_more);
 
   do {
+    parsePath(item_name, parameter, &parameter_offset, &is_more);
+    printf("key=%s is_more=%d\n", item_name, is_more);
     readINode(state->disk_info, current_path.inode_number, &current_inode);
     directory_offset +=
       readDirectory(state->disk_info, &current_inode, &current_directory, directory_offset);
@@ -316,11 +317,11 @@ int32_t readPath(State* state, char* parameter, Directory* found_file) {
     bzero(&current_path, sizeof(Path));
     current_path.inode_number = current_directory.inode;
     strncpy(current_path.name, current_directory.name, current_directory.name_len);
-
-    parsePath(item_name, parameter, &parameter_offset, &is_more);
   } while (is_more);
 
   memcpy(found_file, &current_directory, sizeof(Directory));
+  printf("found: \n");
+  printDirectory(state->disk_info, found_file);
 
   return EXIT_SUCCESS;
 }

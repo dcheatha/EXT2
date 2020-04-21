@@ -96,7 +96,7 @@ int32_t main(int32_t argc, char** argv) {
 
     // printMenu();
 
-    printf("%d\\%d> ", state.user.group_id, state.user.user_id);
+    printf("%d/%d> ", state.user.group_id, state.user.user_id);
     command_id = grabCommand(parameter);
 
     if (command_id > kCommandCount) {
