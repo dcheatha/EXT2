@@ -54,14 +54,14 @@ int32_t allocateBlock(DiskInfo* disk_info, ExtInfo* ext_info) {
  * @param inode_start
  * @param directory
  */
-void allocateDirectoryEntry(DiskInfo* disk_info, int32_t inode_start, Directory* directory) {
+void allocateDirectoryEntry(DiskInfo* disk_info, int32_t inode_no, Directory* directory) {
   INode     root_inode;
   Directory root_dir;
   int32_t   read_index  = 0;
   int32_t   write_index = 0;
   time_t    now         = time(NULL);
 
-  readINode(disk_info, inode_start, &root_inode);
+  readINode(disk_info, inode_no, &root_inode);
 
   while (1) {
     // Read index must be a multiple of 4 to start a directory entry
@@ -90,7 +90,7 @@ void allocateDirectoryEntry(DiskInfo* disk_info, int32_t inode_start, Directory*
       root_inode.i_links_count++;
       root_inode.i_atime = now;
       // And write the INode back to disk:
-      writeINode(disk_info, inode_start, &root_inode);
+      writeINode(disk_info, inode_no, &root_inode);
       return;
     }
   }
@@ -163,7 +163,7 @@ void allocateDirectoryTable(State* state, Directory* parent_dir, Directory* new_
   // Create the INode and dump it to the disk
   INode inode;
   readINode(state->disk_info, inode_no, &inode);
-  bzero(&inode, sizeof(INode));
+  // bzero(&inode, sizeof(INode));
 
   inode.i_mode |= EXT2_S_IFDIR;
   inode.i_mode |= getDefaultMode(EXT2_FT_DIR);

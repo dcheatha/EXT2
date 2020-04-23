@@ -107,7 +107,11 @@ void parsePath(char* destination, char* input, int32_t* offset, int8_t* is_more)
       return;
     }
 
-    destination[pos] = input[pos];
+    if (pos == *offset) {
+      bzero(destination, EXT2_NAME_LEN);
+    }
+
+    destination[pos - *offset] = input[pos];
   }
 }
 

@@ -298,7 +298,6 @@ int32_t readPath(State* state, char* parameter, Directory* found_file) {
       readDirectory(state->disk_info, &current_inode, &current_directory, directory_offset);
 
     // Search until the end for a matching name
-    // TODO: Continue searching if the file type is not a dir and we have more path
     while (strcmp(current_directory.name, item_name) != 0 && !isEndDirectory(&current_directory)) {
       if (directory_offset % 4 != 0) {
         directory_offset += 4 - (directory_offset % 4);
@@ -313,15 +312,15 @@ int32_t readPath(State* state, char* parameter, Directory* found_file) {
       return EXIT_FAILURE;
     }
 
-    // If we somehow got an item we wanna dig into:
+    // If we somehow got an item we wanna dig into, switch to its dir table and reset our
+    // dir_offset:
     bzero(&current_path, sizeof(Path));
     current_path.inode_number = current_directory.inode;
     strncpy(current_path.name, current_directory.name, current_directory.name_len);
+    directory_offset = 0;
   } while (is_more);
 
   memcpy(found_file, &current_directory, sizeof(Directory));
-  printf("found: \n");
-  printDirectory(state->disk_info, found_file);
 
   return EXIT_SUCCESS;
 }
