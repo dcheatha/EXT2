@@ -103,12 +103,53 @@ void runRMDIR(State* state, char* parameter) {
 }
 
 /**
+ * @brief Cats a file
+ *
+ * @param state
+ * @param parameter
+ */
+void runCAT(State* state, char* parameter) {
+  Directory found_file;
+
+  if (readPath(state, parameter, &found_file) == EXIT_FAILURE) {
+    printf("cat: %s: No such file or directory\n", parameter);
+    return;
+  }
+
+  if (found_file.file_type != EXT2_FT_REG_FILE) {
+    printf("cat: %s: Is not a regular file\n", parameter);
+    return;
+  }
+
+  INode inode;
+  readINode(state->disk_info, found_file.inode, &inode);
+
+  printFile(state->disk_info, &inode);
+}
+
+void runCREATE(State* state, char* parameter) {}
+void runLINK(State* state, char* parameter) {}
+void runUNLINK(State* state, char* parameter) {}
+void runMKFS(State* state, char* parameter) {}
+void runCP(State* state, char* parameter) {}
+
+/**
+ * @brief Prints the menu
+ *
+ * @param state
+ * @param parameter
+ */
+void runMENU(State* state, char* parameter) { printMenu(); }
+
+/**
  * @brief Runs a command on the filesystem
  *
  * @param command
  * @param parameter
  */
 void runCommand(State* state, Command command, char* parameter) {
-  void (*commands[])(State * state, char* parameter) = { runLS, runMKDIR, runRMDIR };
+  void (*commands[])(State * state, char* parameter) = { runLS,   runMKDIR,  runRMDIR, runCREATE,
+                                                         runLINK, runUNLINK, runMKFS,  runCAT,
+                                                         runCP,   runMENU };
   (*commands[command])(state, parameter);
 }

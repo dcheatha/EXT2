@@ -167,4 +167,15 @@ int32_t readPathParent(State* state, char* parameter, Directory* found_file);
  */
 int8_t readPathExists(State* state, char* parameter);
 
+/**
+ * @brief Reads a file
+ *
+ * @param disk_info
+ * @param inode
+ * @param buffer
+ * @param bytes
+ * @param offset
+ */
+void readFile(DiskInfo* disk_info, INode* inode, int8_t* buffer, int32_t bytes, int32_t offset);
+
 #endif

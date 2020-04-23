@@ -9,7 +9,7 @@ BINNAME     = main
 BINDIR      = bin
 
 # Disk file
-DISKNAME    = ext2-dev-disk
+DISKNAME    = disk2
 
 # Testing
 TESTDIR     = test

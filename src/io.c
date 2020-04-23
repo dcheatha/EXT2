@@ -65,13 +65,15 @@ void readBlockBytes(DiskInfo* disk_info, int64_t block, int8_t* buffer, int64_t 
                     int64_t offset) {
   // printf("[R block block=%li bytes=%li offset=%li] ", block, bytes, offset);
 
-  if (bytes + offset > disk_info->block_size) {
-    printf(
-      "io: readBlockBytes(): warn: Read past block boundaries on block %ld from bytes %ld to %ld "
-      "\n",
-      block, offset, offset + bytes);
-  }
+  /*
+    if (bytes + offset > disk_info->block_size) {
+      printf(
+        "io: readBlockBytes(): warn: Read past block boundaries on block %ld from bytes %ld to %ld "
+        "\n",
+        block, offset, offset + bytes);
+    }
 
+  */
   readBytes(disk_info, block * disk_info->block_size + offset, buffer, bytes);
 }
 
@@ -147,6 +149,8 @@ void readINode(DiskInfo* disk_info, int32_t number, INode* i_node) {
   // printf("{R INode INode=%i} ", number);
   readBlockBytes(disk_info, group_desc.bg_inode_table, (int8_t*)i_node, sizeof(INode),
                  table_index * sizeof(INode));
+
+  i_node->i_blocks = i_node->i_blocks / (2 << disk_info->s_log_block_size);
 }
 
 /**
@@ -206,14 +210,16 @@ int32_t readDirectory(DiskInfo* disk_info, INode* inode, Directory* directory, i
   //       inode->i_block[block_index], directory_index);
 
   // Read the first bit of the struct into memory
-  readBlockBytes(disk_info, inode->i_block[block_index], (int8_t*)directory, 8, directory_index);
+  // readBlockBytes(disk_info, inode->i_block[block_index], (int8_t*)directory, 8, directory_index);
+  readFile(disk_info, inode, (int8_t*)directory, 8, directory_index);
 
   // Clean up the place to dump the string
   bzero(directory->name, sizeof(directory->name));
 
   // Read the name into the directory
-  readBlockBytes(disk_info, inode->i_block[block_index], (int8_t*)directory->name,
-                 directory->name_len, directory_index + 8);
+  // readBlockBytes(disk_info, inode->i_block[block_index], (int8_t*)directory->name,
+  //               directory->name_len, directory_index + 8);
+  readFile(disk_info, inode, (int8_t*)directory->name, directory->name_len, directory_index + 8);
 
   return 8 + directory->name_len;
 }
@@ -389,8 +395,13 @@ void readFile(DiskInfo* disk_info, INode* inode, int8_t* buffer, int32_t bytes,
     bytes / disk_info->block_size + (bytes % disk_info->block_size != 0);  // Rounds value up
   int32_t offset_blocks = offset_bytes / disk_info->block_size;
 
+  bzero(buffer, bytes);
+
   // Set upperbound to amount of blocks the INode has
   if (blocks_to_read > inode->i_blocks) {
+    printf("io: readFile(): warn: Requested to read %d 1 blocks when there are only %d blocks\n",
+           blocks_to_read, inode->i_blocks);
+
     blocks_to_read = inode->i_blocks;
   }
 
@@ -420,11 +431,20 @@ void readFile(DiskInfo* disk_info, INode* inode, int8_t* buffer, int32_t bytes,
       read_bytes -= offset_bytes;
     }
 
+    // And make sure we don't write past buffer:
+    if (buffer_pos + read_bytes > bytes) {
+      read_bytes = bytes - buffer_pos;
+    }
+
     // Triple Indirect range:
     if (block_pos >= range.triple_start) {
-      int32_t block_offset =
-        sizeof(int32_t) * ((block_pos - range.triple_start) /
-                           (range.indirects_per_block * range.indirects_per_block));
+      int32_t block_index =
+        (block_pos - range.triple_start) / (range.indirects_per_block) %
+        (range.indirects_per_block * range.indirects_per_block * range.indirects_per_block);
+      int32_t block_offset = sizeof(int32_t) * block_index;
+
+      // printf("io: readFile(): info: Triple Indirect: Reading index=%d offset=%d\n", block_index,
+      //       block_offset);
 
       readBlockBytes(disk_info, inode->i_block[EXT2_INDIRECT_TRIPLE], (int8_t*)&block_no,
                      sizeof(int32_t), block_offset);
@@ -432,26 +452,33 @@ void readFile(DiskInfo* disk_info, INode* inode, int8_t* buffer, int32_t bytes,
 
     // Double Indirect range:
     if (block_pos >= range.double_start) {
-      int32_t block_offset =
-        sizeof(int32_t) * ((block_pos - range.double_start) / (range.indirects_per_block));
+      int32_t block_index = (block_pos - range.double_start) / (range.indirects_per_block) %
+                            (range.indirects_per_block * range.indirects_per_block);
+      int32_t block_offset = sizeof(int32_t) * block_index;
 
       // If triple indirect was NOT called, then work off of double indirect table
       if (!(block_pos >= range.triple_start)) {
         block_no = inode->i_block[EXT2_INDIRECT_DOUBLE];
       }
 
+      // printf("io: readFile(): info: Double Indirect: Reading block=%d index=%d offset=%d\n",
+      //       block_no, block_index, block_offset);
+
       readBlockBytes(disk_info, block_no, (int8_t*)&block_no, sizeof(int32_t), block_offset);
     }
 
     // Single Indirect range:
     if (block_pos >= range.single_start) {
-      int32_t block_offset = sizeof(int32_t) * (block_pos - range.single_start);
+      int32_t block_index  = (block_pos - range.single_start) % range.indirects_per_block;
+      int32_t block_offset = sizeof(int32_t) * block_index;
 
       // If double indirect was NOT called, then work off of single indirect table
       if (!(block_pos >= range.double_start)) {
         block_no = inode->i_block[EXT2_INDIRECT_SINGLE];
       }
 
+      // printf("io: readFile(): info: Single Indirect: Reading block=%d index=%d offset=%d\n",
+      //       block_no, block_index, block_offset);
       // Read which block we want from the single indirect table:
       readBlockBytes(disk_info, block_no, (int8_t*)&block_no, sizeof(block_no), block_offset);
     }
@@ -461,7 +488,10 @@ void readFile(DiskInfo* disk_info, INode* inode, int8_t* buffer, int32_t bytes,
       block_no = inode->i_block[block_pos];
     }
 
+    // printf("io: readFile(): info: Reading block=%d bytes=%d offset=%d\n", block_no, read_bytes,
+    //       read_offset);
     readBlockBytes(disk_info, block_no, buffer + buffer_pos, read_bytes, read_offset);
+    // printf("io: readFile(): info: data: %s\n", buffer + buffer_pos);
     buffer_pos += read_bytes;
 
     if (block_pos > range.triple_end) {

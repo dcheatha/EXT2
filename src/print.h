@@ -10,9 +10,8 @@
 /**
  * @brief List of commands as strings
  */
-static const char* kPrintCommands[] = {
-  "LS", "MKDIR", "RMDIR", "CREATE", "LINK", "UNLINK", "MKFS"
-};
+static const char* kPrintCommands[] = { "LS",     "MKDIR", "RMDIR", "CREATE", "LINK",
+                                        "UNLINK", "MKFS",  "CAT",   "CP",     "MENU" };
 
 /**
  * @brief Count of commands
@@ -67,5 +66,13 @@ void printBitmap(int8_t bitmap);
  * @param group_desc
  */
 void printGroupDesc(GroupDesc* group_desc);
+
+/**
+ * @brief Prints a file
+ *
+ * @param disk_info
+ * @param file
+ */
+void printFile(DiskInfo* disk_info, INode* file);
 
 #endif

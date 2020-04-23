@@ -53,6 +53,7 @@ typedef struct ext2_dir_entry_tail DirectoryTail;
 typedef struct disk_info {
   int32_t file_desc;
   int64_t block_size;
+  int32_t s_log_block_size;
   int32_t inodes_per_group;
   int32_t blocks_per_group;
   int32_t group_count;
@@ -71,7 +72,7 @@ typedef struct ext2_info {
  * @brief Command IDs for interacting with the filesystem
  * MKFS = Make Filesystem
  */
-enum Command { LS, MKDIR, RMDIR, CREATE, LINK, UNLINK, MKFS } typedef Command;
+enum Command { LS, MKDIR, RMDIR, CREATE, LINK, UNLINK, MKFS, CAT, CP, MENU } typedef Command;
 
 /**
  * @brief Keeps track of the current path on disk

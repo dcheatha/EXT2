@@ -94,12 +94,12 @@ void printDirectory(DiskInfo* disk_info, Directory* directory) {
   time_struct = localtime((time_t*)&inode.i_mtime);
   strftime(formatted_time, 20, "%d %b %H:%M", time_struct);
 
-  printf("%d ", inode.i_blocks);
+  printf("%3d ", inode.i_blocks);
   printMode(inode.i_mode);
   printf("%2d ", inode.i_links_count);
   printf("%2d ", inode.i_uid);
   printf("%2d ", inode.i_gid);
-  printf("%6d ", inode.i_size);
+  printf("%10li ", (int64_t)inode.i_size_high << 32 | inode.i_size);
   printf("%s ", formatted_time);
   printf("%s\n", directory->name);
 }
@@ -148,18 +148,6 @@ void printDirectoryTable(DiskInfo* disk_info, int32_t inode_start) {
     }
 
     printDirectory(disk_info, &root_dir);
-
-    /*
-    if (root_dir.file_type == EXT2_FT_REG_FILE) {
-      INode data_inode;
-      readINode(disk_info, root_dir.inode, &data_inode);
-      printINode(&data_inode);
-
-      char buffer[1024] = { 0 };
-      readINodeData(disk_info, &data_inode, (int8_t*)&buffer, 1024);
-      printf("%20s: %s\n", "Data", buffer);
-    }
-    */
   }
 }
 
@@ -174,4 +162,23 @@ void printBitmap(int8_t bitmap) {
   for (int8_t bit_pos = 0; bit_pos < 8 * sizeof(int8_t); bit_pos++) {
     printf("%i", testBit(bitmap, bit_pos));
   }
+}
+
+/**
+ * @brief Prints a file
+ *
+ * @param disk_info
+ * @param file
+ */
+void printFile(DiskInfo* disk_info, INode* file) {
+  int8_t* seriously_the_entire_file = (int8_t*)calloc(sizeof(int8_t), file->i_size);
+
+  printf("Found file: ");
+  printINode(file);
+
+  readFile(disk_info, file, seriously_the_entire_file, file->i_size, 0);
+
+  printf("%s\n", seriously_the_entire_file);
+
+  free(seriously_the_entire_file);
 }
