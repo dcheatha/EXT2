@@ -131,6 +131,60 @@ void allocateDirectoryEntry(DiskInfo* disk_info, int32_t inode_no, Directory* di
 }
 
 /**
+ * @brief Deallocatess a directory entry
+ *
+ * @param disk_info
+ * @param inode_no
+ * @param directory
+ */
+void deallocateDirectoryEntry(DiskInfo* disk_info, int32_t inode_no, char* to_remove_name) {
+  INode     root_inode;
+  Directory current_dir;
+  time_t    now = time(NULL);
+
+  // ptrs on fs
+  int32_t read_index  = 0;
+  int32_t write_index = 0;
+
+  readINode(disk_info, inode_no, &root_inode);
+
+  // Scan for the dir we want
+  while (1) {
+    if (read_index % 4 != 0) {
+      read_index += 4 - (read_index % 4);
+    }
+
+    read_index += readDirectory(disk_info, &root_inode, &current_dir, read_index);
+
+    if (strcmp(to_remove_name, current_dir.name) == 0) {
+      // We found our guy to remove!
+      write_index = read_index - 8 - current_dir.name_len;
+      break;
+    }
+  }
+
+  // Move all the other dirs up
+  while (1) {
+    if (read_index % 4 != 0) {
+      read_index += 4 - (read_index % 4);
+    }
+
+    if (write_index % 4 != 0) {
+      write_index += 4 - (write_index % 4);
+    }
+
+    read_index += readDirectory(disk_info, &root_inode, &current_dir, read_index);
+    write_index += writeDirectory(disk_info, &root_inode, &current_dir, write_index);
+
+    if (isEndDirectory(&current_dir)) {
+      bzero(&current_dir, sizeof(Directory));
+      writeDirectory(disk_info, &root_inode, &current_dir, write_index);
+      return;
+    }
+  }
+}
+
+/**
  * @brief Returns the INode no of a newly allocated INode
  * NOTE: INode number from the bitmap starts counting at 1
  *
@@ -181,6 +235,41 @@ int32_t allocateINode(State* state) {
   }
 
   return -1;
+}
+
+/**
+ * @brief Deallocates an INode
+ *
+ * @param disk_info
+ * @param block_no
+ * @return int32_t
+ */
+void deallocateINode(DiskInfo* disk_info, int32_t inode_no) {
+  GroupDesc group_desc;
+  INode     inode;
+  int8_t    buffer[disk_info->block_size];
+
+  int32_t group = inode_no / disk_info->inodes_per_group;
+  int32_t pos   = inode_no % (disk_info->inodes_per_group / 8);
+  int8_t  bit   = pos % 8;
+
+  readINode(disk_info, inode_no, &inode);
+
+  // TODO: Kill all the blocks alloc'd in the INode.
+
+  // Dump 0's to the block we're deallocing
+  bzero(&inode, sizeof(INode));
+  writeINode(disk_info, inode_no, &inode);
+
+  // Read the group desc and find the right block
+  readGroupDesc(disk_info, group, &group_desc);
+  readBlock(disk_info, group_desc.bg_inode_bitmap, (int8_t*)&buffer);
+
+  // Flip the offending bit
+  buffer[pos] &= ~(1 << bit);
+
+  // Dump the bitmap back down to the disk
+  writeBlock(disk_info, group_desc.bg_inode_bitmap, (int8_t*)&buffer);
 }
 
 /**

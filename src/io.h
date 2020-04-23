@@ -178,4 +178,15 @@ int8_t readPathExists(State* state, char* parameter);
  */
 void readFile(DiskInfo* disk_info, INode* inode, int8_t* buffer, int32_t bytes, int32_t offset);
 
+/**
+ * @brief Writes to a file
+ *
+ * @param disk_info
+ * @param inode
+ * @param buffer
+ * @param bytes
+ * @param offset
+ */
+void writeFile(DiskInfo* disk_info, INode* inode, int8_t* buffer, int32_t bytes, int32_t offset);
+
 #endif

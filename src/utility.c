@@ -22,7 +22,7 @@ void initializeFilesystem(DiskInfo* disk_info, ExtInfo* ext_info) {
   }
 
   // Store block size (needs to be 32bits to the left...)
-  disk_info->block_size = 1024 << ext_info->super_block.s_log_block_size;
+  disk_info->block_size       = 1024 << ext_info->super_block.s_log_block_size;
   disk_info->s_log_block_size = ext_info->super_block.s_log_block_size;
 
   // Need to know how many blocks there are in a group

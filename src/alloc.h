@@ -49,4 +49,29 @@ int32_t allocateBlock(DiskInfo* disk_info);
  */
 void allocateDirectoryTable(State* state, Directory* parent_dir, Directory* new_dir);
 
+/**
+ * @brief Asks a dir entry to leave
+ *
+ * @param disk_info
+ * @param inode_no
+ * @param directory
+ */
+void deallocateDirectoryEntry(DiskInfo* disk_info, int32_t inode_no, char* to_remove_name);
+
+/**
+ * @brief Deallocs a block
+ *
+ * @param disk_info
+ * @param block_no
+ */
+void deallocateBlock(DiskInfo* disk_info, int32_t block_no);
+
+/**
+ * @brief Deallocs an INode
+ *
+ * @param disk_info
+ * @param inode_no
+ */
+void deallocateINode(DiskInfo* disk_info, int32_t inode_no);
+
 #endif

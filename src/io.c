@@ -210,16 +210,16 @@ int32_t readDirectory(DiskInfo* disk_info, INode* inode, Directory* directory, i
   //       inode->i_block[block_index], directory_index);
 
   // Read the first bit of the struct into memory
-  // readBlockBytes(disk_info, inode->i_block[block_index], (int8_t*)directory, 8, directory_index);
-  readFile(disk_info, inode, (int8_t*)directory, 8, directory_index);
+  readBlockBytes(disk_info, inode->i_block[block_index], (int8_t*)directory, 8, directory_index);
+  // readFile(disk_info, inode, (int8_t*)directory, 8, directory_index);
 
   // Clean up the place to dump the string
   bzero(directory->name, sizeof(directory->name));
 
   // Read the name into the directory
-  // readBlockBytes(disk_info, inode->i_block[block_index], (int8_t*)directory->name,
-  //               directory->name_len, directory_index + 8);
-  readFile(disk_info, inode, (int8_t*)directory->name, directory->name_len, directory_index + 8);
+  readBlockBytes(disk_info, inode->i_block[block_index], (int8_t*)directory->name,
+                 directory->name_len, directory_index + 8);
+  // readFile(disk_info, inode, (int8_t*)directory->name, directory->name_len, directory_index + 8);
 
   return 8 + directory->name_len;
 }
@@ -496,6 +496,152 @@ void readFile(DiskInfo* disk_info, INode* inode, int8_t* buffer, int32_t bytes,
 
     if (block_pos > range.triple_end) {
       printf("io: readFile(): warn: Requested block beyond max supported range\n");
+    }
+  }
+}
+
+/**
+ * @brief Writes a file to the disk into buffer for n bytes
+ *
+ * @param disk_info
+ * @param inode
+ * @param buffer
+ * @param bytes
+ * @param offset (in bytes)
+ */
+void writeFile(DiskInfo* disk_info, INode* inode, int8_t* buffer, int32_t bytes,
+               int32_t offset_bytes) {
+  int32_t blocks_to_read =
+    bytes / disk_info->block_size + (bytes % disk_info->block_size != 0);  // Rounds value up
+  int32_t offset_blocks = offset_bytes / disk_info->block_size;
+
+  bzero(buffer, bytes);
+
+  // Set upperbound to amount of blocks the INode has
+  if (blocks_to_read > inode->i_blocks) {
+    printf("io: writeFile(): warn: Requested to write %d 1 blocks when there are only %d blocks\n",
+           blocks_to_read, inode->i_blocks);
+
+    blocks_to_read = inode->i_blocks;
+  }
+
+  IndirectRange range      = calculateIndirectRange(disk_info);
+  int32_t       buffer_pos = 0;
+
+  for (int32_t block_pos = offset_blocks; block_pos < blocks_to_read + offset_blocks; block_pos++) {
+    int32_t read_bytes  = disk_info->block_size;  // Bytes to read from this block
+    int32_t read_offset = 0;                      // Offset in bytes to read from this block
+    int32_t block_no    = 0;                      // Block to read
+
+    // If we are the first read, adjust for our offset:
+    if (block_pos == offset_blocks) {
+      read_bytes -= offset_bytes;
+      read_offset += offset_bytes;
+    }
+
+    // If we are the last read, adjust for our offset:
+    if (block_pos == blocks_to_read + offset_blocks) {
+      read_bytes -= offset_bytes;
+    }
+
+    // And make sure we don't write past buffer:
+    if (buffer_pos + read_bytes > bytes) {
+      read_bytes = bytes - buffer_pos;
+    }
+
+    // Triple Indirect range:
+    if (block_pos >= range.triple_start) {
+      int32_t block_index =
+        (block_pos - range.triple_start) / (range.indirects_per_block) %
+        (range.indirects_per_block * range.indirects_per_block * range.indirects_per_block);
+      int32_t block_offset = sizeof(int32_t) * block_index;
+
+      // printf("io: writeFile(): info: Triple Indirect: Reading index=%d offset=%d\n", block_index,
+      //       block_offset);
+      if (inode->i_block[EXT2_INDIRECT_TRIPLE] == 0) {
+        inode->i_block[EXT2_INDIRECT_DOUBLE] = allocateBlock(disk_info);
+      }
+
+      readBlockBytes(disk_info, inode->i_block[EXT2_INDIRECT_TRIPLE], (int8_t*)&block_no,
+                     sizeof(int32_t), block_offset);
+
+      if (block_no == 0) {
+        block_no = allocateBlock(disk_info);
+        writeBlockBytes(disk_info, block_no, (int8_t*)&block_no, sizeof(block_no), block_offset);
+      }
+    }
+
+    // Double Indirect range:
+    if (block_pos >= range.double_start) {
+      int32_t block_index = (block_pos - range.double_start) / (range.indirects_per_block) %
+                            (range.indirects_per_block * range.indirects_per_block);
+      int32_t block_offset = sizeof(int32_t) * block_index;
+
+      // If triple indirect was NOT called, then work off of double indirect table
+      if (!(block_pos >= range.triple_start)) {
+        block_no = inode->i_block[EXT2_INDIRECT_DOUBLE];
+      }
+
+      if (block_no == 0) {
+        block_no                             = allocateBlock(disk_info);
+        inode->i_block[EXT2_INDIRECT_DOUBLE] = block_no;
+      }
+
+      // printf("io: writeFile(): info: Double Indirect: Reading block=%d index=%d offset=%d\n",
+      //       block_no, block_index, block_offset);
+
+      readBlockBytes(disk_info, block_no, (int8_t*)&block_no, sizeof(int32_t), block_offset);
+
+      if (block_no == 0) {
+        block_no = allocateBlock(disk_info);
+        writeBlockBytes(disk_info, block_no, (int8_t*)&block_no, sizeof(block_no), block_offset);
+      }
+    }
+
+    // Single Indirect range:
+    if (block_pos >= range.single_start) {
+      int32_t block_index  = (block_pos - range.single_start) % range.indirects_per_block;
+      int32_t block_offset = sizeof(int32_t) * block_index;
+
+      // If double indirect was NOT called, then work off of single indirect table
+      if (!(block_pos >= range.double_start)) {
+        block_no = inode->i_block[EXT2_INDIRECT_SINGLE];
+      }
+
+      if (block_no == 0) {
+        block_no                             = allocateBlock(disk_info);
+        inode->i_block[EXT2_INDIRECT_SINGLE] = block_no;
+      }
+
+      // printf("io: writeFile(): info: Single Indirect: Reading block=%d index=%d offset=%d\n",
+      //       block_no, block_index, block_offset);
+      // Read which block we want from the single indirect table:
+      readBlockBytes(disk_info, block_no, (int8_t*)&block_no, sizeof(block_no), block_offset);
+
+      if (block_no == 0) {
+        block_no = allocateBlock(disk_info);
+        writeBlockBytes(disk_info, block_no, (int8_t*)&block_no, sizeof(block_no), block_offset);
+      }
+    }
+
+    // Direct block range:
+    if (block_pos < range.single_start) {
+      block_no = inode->i_block[block_pos];
+
+      if (block_no == 0) {
+        block_no                  = allocateBlock(disk_info);
+        inode->i_block[block_pos] = block_no;
+      }
+    }
+
+    // printf("io: writeFile(): info: Reading block=%d bytes=%d offset=%d\n", block_no, read_bytes,
+    //       read_offset);
+    writeBlockBytes(disk_info, block_no, buffer + buffer_pos, read_bytes, read_offset);
+    // printf("io: writeFile(): info: data: %s\n", buffer + buffer_pos);
+    buffer_pos += read_bytes;
+
+    if (block_pos > range.triple_end) {
+      printf("io: writeFile(): warn: Requested block beyond max supported range\n");
     }
   }
 }
