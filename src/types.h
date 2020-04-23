@@ -3,6 +3,11 @@
 
 #include <ext2fs/ext2_fs.h>
 
+/**
+ * @brief Filesystem perm constants
+ * I needed these constants, but I couldn't find the appropriate header for them. Please
+ * excuse the copy / paste here.
+ */
 #define EXT2_S_IFMT 0xF000   /* format mask  */
 #define EXT2_S_IFSOCK 0xC000 /* socket */
 #define EXT2_S_IFLNK 0xA000  /* symbolic link */
@@ -98,5 +103,16 @@ struct State {
   Path*     path_cwd;
   Directory current_file;
 } typedef State;
+
+/**
+ * @brief
+ */
+typedef struct IndirectRange {
+  int32_t indirects_per_block;
+  int32_t single_start;
+  int32_t double_start;
+  int32_t triple_start;
+  int32_t triple_end;
+} IndirectRange;
 
 #endif

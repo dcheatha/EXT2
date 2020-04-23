@@ -162,3 +162,23 @@ int16_t getDefaultMode(int16_t file_type) {
     default: return EXT2_S_IRWXU | EXT2_S_IRWXG;
   }
 }
+
+/**
+ * @brief Calculates the indirect ranges
+ *
+ * @param disk_info
+ * @return IndirectRange
+ */
+IndirectRange calculateIndirectRange(DiskInfo* disk_info) {
+  int32_t       indirects_per_block = disk_info->block_size / sizeof(int32_t);
+  IndirectRange range               = { 0, EXT2_INDIRECT_SINGLE };
+
+  range.double_start = range.single_start + indirects_per_block;
+  range.triple_start = range.double_start + (indirects_per_block * indirects_per_block);
+  range.triple_end =
+    range.triple_start + (indirects_per_block * indirects_per_block * indirects_per_block);
+
+  range.indirects_per_block = indirects_per_block;
+
+  return range;
+}

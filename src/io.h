@@ -11,6 +11,13 @@
 #include <unistd.h>
 
 /**
+ * @brief Keeps track of the indirect block names
+ */
+#define EXT2_INDIRECT_SINGLE 12
+#define EXT2_INDIRECT_DOUBLE 13
+#define EXT2_INDIRECT_TRIPLE 14
+
+/**
  * @brief Reads bytes from the disk
  *
  * @param disk_info

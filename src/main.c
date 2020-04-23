@@ -38,7 +38,7 @@ uint32_t grabCommand(char parameter[EXT2_NAME_LEN]) {
   // Split the string, dump part after command into parameter
   for (int32_t pos = 0; pos < EXT2_NAME_LEN; pos++) {
     if (buffer[pos] == '\0') {
-      bzero(parameter, sizeof(parameter));
+      bzero(parameter, EXT2_NAME_LEN);
       strcpy(command, buffer);
       break;
     }
@@ -100,7 +100,7 @@ int32_t main(int32_t argc, char** argv) {
     command_id = grabCommand(parameter);
 
     if (command_id > kCommandCount) {
-      printf("ext2: command not found\n", command_id + 1);
+      printf("shell: command not found\n");
       continue;
     }
 

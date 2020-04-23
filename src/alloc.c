@@ -18,10 +18,9 @@ int32_t isEndDirectory(Directory* directory) {
  * @brief Allocates a block
  *
  * @param disk_info
- * @param ext_info
  * @return int32_t
  */
-int32_t allocateBlock(DiskInfo* disk_info, ExtInfo* ext_info) {
+int32_t allocateBlock(DiskInfo* disk_info) {
   GroupDesc group_desc;
   int8_t    buffer[disk_info->block_size];
 
@@ -45,6 +44,41 @@ int32_t allocateBlock(DiskInfo* disk_info, ExtInfo* ext_info) {
       }
     }
   }
+
+  printf("alloc: allocateBlock(): error: Failed to alloc block\n");
+  exit(EXIT_FAILURE);
+
+  return -1;
+}
+
+/**
+ * @brief Deallocates a block
+ *
+ * @param disk_info
+ * @param block_no
+ * @return int32_t
+ */
+void deallocateBlock(DiskInfo* disk_info, int32_t block_no) {
+  GroupDesc group_desc;
+  int8_t    buffer[disk_info->block_size];
+
+  int32_t group = block_no / disk_info->blocks_per_group;
+  int32_t pos   = block_no % (disk_info->blocks_per_group / 8);
+  int8_t  bit   = pos % 8;
+
+  // Dump 0's to the block we're deallocing
+  bzero(buffer, disk_info->block_size);
+  writeBlock(disk_info, block_no, (int8_t*)&buffer);
+
+  // Read the group desc and find the right block
+  readGroupDesc(disk_info, group, &group_desc);
+  readBlock(disk_info, group_desc.bg_block_bitmap, (int8_t*)&buffer);
+
+  // Flip the offending bit
+  buffer[pos] &= ~(1 << bit);
+
+  // Dump the bitmap back down to the disk
+  writeBlock(disk_info, group_desc.bg_block_bitmap, (int8_t*)&buffer);
 }
 
 /**
@@ -158,7 +192,7 @@ int32_t allocateINode(State* state) {
  */
 void allocateDirectoryTable(State* state, Directory* parent_dir, Directory* new_dir) {
   int32_t inode_no = allocateINode(state);
-  int32_t block_no = allocateBlock(state->disk_info, state->ext_info);
+  int32_t block_no = allocateBlock(state->disk_info);
 
   // Create the INode and dump it to the disk
   INode inode;
@@ -169,6 +203,7 @@ void allocateDirectoryTable(State* state, Directory* parent_dir, Directory* new_
   inode.i_mode |= getDefaultMode(EXT2_FT_DIR);
   inode.i_block[0]    = block_no;
   inode.i_blocks      = 1;
+  inode.i_size        = state->disk_info->block_size;
   inode.i_links_count = 1;
 
   inode.i_atime = time(NULL);
@@ -182,7 +217,7 @@ void allocateDirectoryTable(State* state, Directory* parent_dir, Directory* new_
   // Add . .. and end dirs
   Directory dirs[] = { { inode_no, 0, 1, EXT2_FT_DIR, "." },
                        { parent_dir->inode, 0, 2, EXT2_FT_DIR, ".." },
-                       { 0, 0, 0, EXT2_FT_UNKNOWN, 0 } };
+                       { 0, 0, 0, EXT2_FT_UNKNOWN, "\0" } };
 
   for (int32_t pos = 0, offset = 0; pos < sizeof(dirs) / sizeof(Directory); pos++) {
     if (offset % 4 != 0) {

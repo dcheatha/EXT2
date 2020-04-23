@@ -52,12 +52,63 @@ void runMKDIR(State* state, char* parameter) {
 }
 
 /**
+ * @brief Runs MKDIR
+ *
+ * @param state
+ * @param parameter
+ */
+void runRMDIR(State* state, char* parameter) {
+  Directory folder_to_remove;
+
+  // Make sure it's not something that would be bad to remove
+  char stub[EXT2_NAME_LEN];
+  getParameterStub(parameter, stub);
+
+  char* bad_matches[] = { ".", "..", "/" };
+
+  for (int32_t pos = 0; pos < sizeof(bad_matches) / sizeof(char*); pos++) {
+    if (strcmp(stub, bad_matches[pos]) == 0) {
+      printf("rmdir: \".\", \"..\", and \"/\" may not be removed");
+      return;
+    }
+  }
+
+  // Check and see if the path exists
+  if (readPathExists(state, parameter) == EXIT_FAILURE) {
+    printf("rmdir: %s: No such file or directory\n", parameter);
+    return;
+  }
+
+  // Load it if the path exists
+  readPath(state, parameter, &folder_to_remove);
+
+  // Make sure we're removing a dir
+  if (folder_to_remove.file_type != EXT2_FT_DIR) {
+    printf("rmdir: %s: Not a directory\n", parameter);
+    return;
+  }
+
+  // Make sure it's an empty dir
+  INode     first_item_inode;
+  Directory first_item;
+  readINode(state->disk_info, folder_to_remove.inode, &first_item_inode);
+  readDirectory(state->disk_info, &first_item_inode, &first_item, (8 + 1) + (8 + 2));
+
+  if (!isEndDirectory(&first_item)) {
+    printf("rmdir: %s: Directory not empty\n", parameter);
+    return;
+  }
+
+  // Now we can dealloc the dir
+}
+
+/**
  * @brief Runs a command on the filesystem
  *
  * @param command
  * @param parameter
  */
 void runCommand(State* state, Command command, char* parameter) {
-  void (*commands[])(State * state, char* parameter) = { runLS, runMKDIR };
+  void (*commands[])(State * state, char* parameter) = { runLS, runMKDIR, runRMDIR };
   (*commands[command])(state, parameter);
 }

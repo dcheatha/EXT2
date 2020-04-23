@@ -68,4 +68,12 @@ void getParameterStub(char* parameter, char* stub);
  */
 int16_t getDefaultMode(int16_t file_type);
 
+/**
+ * @brief Calculates the INode indirection ranges
+ *
+ * @param disk_info
+ * @return IndirectRange
+ */
+IndirectRange calculateIndirectRange(DiskInfo* disk_info);
+
 #endif

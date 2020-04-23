@@ -36,10 +36,9 @@ int32_t allocateINode(State* state);
  * @brief Allocates a block
  *
  * @param disk_info
- * @param ext_info
  * @return int32_t
  */
-int32_t allocateBlock(DiskInfo* disk_info, ExtInfo* ext_info);
+int32_t allocateBlock(DiskInfo* disk_info);
 
 /**
  * @brief Allocs a new dir table
