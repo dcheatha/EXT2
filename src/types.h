@@ -72,7 +72,21 @@ typedef struct ext2_info {
  * @brief Command IDs for interacting with the filesystem
  * MKFS = Make Filesystem
  */
-enum Command { LS, MKDIR, RMDIR, CREATE, LINK, UNLINK, MKFS, CAT, CP, MENU, CD } typedef Command;
+enum Command {
+  LS,
+  MKDIR,
+  RMDIR,
+  CREATE,
+  LINK,
+  UNLINK,
+  MKFS,
+  CAT,
+  CP,
+  MENU,
+  CD,
+  DISKINFO,
+  INODEINFO
+} typedef Command;
 
 /**
  * @brief Keeps track of the current path on disk

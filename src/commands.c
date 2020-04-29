@@ -143,6 +143,7 @@ void runCAT(State* state, char* parameter) {
  * @param parameter
  */
 void runCP(State* state, char* parameter) {
+  /*
   Directory parent_folder;
   Directory source_file;
   Directory dest_file;
@@ -172,6 +173,7 @@ void runCP(State* state, char* parameter) {
   dest_file.inode     = allocateINode(state);
 
   allocateDirectoryEntry(state->disk_info, parent_folder.inode, &dest_file);
+  */
 }
 
 /**
@@ -272,6 +274,12 @@ void runUNLINK(State* state, char* parameter) {
   }
 }
 
+/**
+ * @brief Inits the filesystem
+ *
+ * @param state
+ * @param parameter
+ */
 void runMKFS(State* state, char* parameter) {}
 
 /**
@@ -283,14 +291,47 @@ void runMKFS(State* state, char* parameter) {}
 void runMENU(State* state, char* parameter) { printMenu(); }
 
 /**
+ * @brief Changes dir
+ *
+ * @param state
+ * @param parameter
+ */
+void runCD(State* state, char* parameter) { printMenu(); }
+
+/**
+ * @brief Prints the current disk info
+ *
+ * @param state
+ * @param parameter
+ */
+void runDISKINFO(State* state, char* parameter) {
+  printDiskInfomation(state->ext_info, state->disk_info);
+}
+
+void runINODEINFO(State* state, char* parameter) {
+  Directory found_file;
+  INode     inode;
+
+  if (readPath(state, parameter, &found_file) == EXIT_FAILURE) {
+    printf("inode: %s: No such file or directory\n", parameter);
+    return;
+  }
+
+  readINode(state->disk_info, found_file.inode, &inode);
+
+  printINode(&inode);
+}
+
+/**
  * @brief Runs a command on the filesystem
  *
  * @param command
  * @param parameter
  */
 void runCommand(State* state, Command command, char* parameter) {
-  void (*commands[])(State * state, char* parameter) = { runLS,   runMKDIR,  runRMDIR, runCREATE,
-                                                         runLINK, runUNLINK, runMKFS,  runCAT,
-                                                         runCP,   runMENU };
+  void (*commands[])(State * state,
+                     char* parameter) = { runLS,     runMKDIR,    runRMDIR,    runCREATE, runLINK,
+                                          runUNLINK, runMKFS,     runCAT,      runCP,     runMENU,
+                                          runCD,     runDISKINFO, runINODEINFO };
   (*commands[command])(state, parameter);
 }

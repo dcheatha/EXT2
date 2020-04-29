@@ -50,9 +50,9 @@ void initializeFilesystem(DiskInfo* disk_info, ExtInfo* ext_info) {
     //          ext2_group_desc));
   }
 
-  printDiskInfomation(ext_info, disk_info);
+  // printDiskInfomation(ext_info, disk_info);
   // printGroupDesc(ext_info->)
-  printDirectoryTable(disk_info, EXT2_ROOT_INO);
+  // printDirectoryTable(disk_info, EXT2_ROOT_INO);
 }
 
 /**

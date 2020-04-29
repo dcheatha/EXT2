@@ -140,7 +140,6 @@ void allocateDirectoryEntry(DiskInfo* disk_info, int32_t inode_no, Directory* di
 void deallocateDirectoryEntry(DiskInfo* disk_info, int32_t inode_no, char* to_remove_name) {
   INode     root_inode;
   Directory current_dir;
-  time_t    now = time(NULL);
 
   // ptrs on fs
   int32_t read_index  = 0;

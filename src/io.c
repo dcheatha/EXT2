@@ -63,17 +63,15 @@ void writeBlock(DiskInfo* disk_info, int64_t block, int8_t* buffer) {
  */
 void readBlockBytes(DiskInfo* disk_info, int64_t block, int8_t* buffer, int64_t bytes,
                     int64_t offset) {
-  // printf("[R block block=%li bytes=%li offset=%li] ", block, bytes, offset);
+  // printf("[R block block=%li bytes=%li offset=%li]\n", block, bytes, offset);
 
-  /*
-    if (bytes + offset > disk_info->block_size) {
-      printf(
-        "io: readBlockBytes(): warn: Read past block boundaries on block %ld from bytes %ld to %ld "
-        "\n",
-        block, offset, offset + bytes);
-    }
+  if (bytes + offset > disk_info->block_size) {
+    printf(
+      "io: readBlockBytes(): warn: Read past block boundaries on block %ld from bytes %ld to %ld "
+      "\n",
+      block, offset, offset + bytes);
+  }
 
-  */
   readBytes(disk_info, block * disk_info->block_size + offset, buffer, bytes);
 }
 
@@ -138,19 +136,19 @@ void readGroupDesc(DiskInfo* disk_info, int64_t group, GroupDesc* group_desc) {
  * local inode index = (inode - 1) % s_inodes_per_group
  *
  * @param disk_info
- * @param i_node
+ * @param inode
  */
-void readINode(DiskInfo* disk_info, int32_t number, INode* i_node) {
+void readINode(DiskInfo* disk_info, int32_t number, INode* inode) {
   GroupDesc group_desc;
   int32_t   block       = (number - 1) / disk_info->inodes_per_group;
   int32_t   table_index = (number - 1) % disk_info->inodes_per_group;
 
   readGroupDesc(disk_info, block, &group_desc);
-  // printf("{R INode INode=%i} ", number);
-  readBlockBytes(disk_info, group_desc.bg_inode_table, (int8_t*)i_node, sizeof(INode),
+  printf("io: readINode(): info: Reading INode %d\n", number);
+  readBlockBytes(disk_info, group_desc.bg_inode_table, (int8_t*)inode, sizeof(INode),
                  table_index * sizeof(INode));
 
-  i_node->i_blocks = i_node->i_blocks / (2 << disk_info->s_log_block_size);
+  inode->i_blocks = inode->i_blocks / (2 << disk_info->s_log_block_size);
 }
 
 /**
@@ -158,16 +156,16 @@ void readINode(DiskInfo* disk_info, int32_t number, INode* i_node) {
  *
  * @param disk_info
  * @param number
- * @param i_node
+ * @param inode
  */
-void writeINode(DiskInfo* disk_info, int32_t number, INode* i_node) {
+void writeINode(DiskInfo* disk_info, int32_t number, INode* inode) {
   GroupDesc group_desc;
   int32_t   block       = (number - 1) / disk_info->inodes_per_group;
   int32_t   table_index = (number - 1) % disk_info->inodes_per_group;
 
   readGroupDesc(disk_info, block, &group_desc);
   // printf("{W INode INode=%i} ", number);
-  writeBlockBytes(disk_info, group_desc.bg_inode_table, (int8_t*)i_node, sizeof(INode),
+  writeBlockBytes(disk_info, group_desc.bg_inode_table, (int8_t*)inode, sizeof(INode),
                   table_index * sizeof(INode));
 }
 
@@ -198,7 +196,7 @@ void readINodeData(DiskInfo* disk_info, INode* inode, int8_t* buffer, int32_t by
  * @brief Reads a directory given an INode
  *
  * @param disk_info
- * @param i_node
+ * @param inode
  * @param directory
  * @param offset
  */
@@ -210,16 +208,16 @@ int32_t readDirectory(DiskInfo* disk_info, INode* inode, Directory* directory, i
   //       inode->i_block[block_index], directory_index);
 
   // Read the first bit of the struct into memory
-  readBlockBytes(disk_info, inode->i_block[block_index], (int8_t*)directory, 8, directory_index);
-  // readFile(disk_info, inode, (int8_t*)directory, 8, directory_index);
+  // readBlockBytes(disk_info, inode->i_block[block_index], (int8_t*)directory, 8, directory_index);
+  readFile(disk_info, inode, (int8_t*)directory, 8, directory_index);
 
   // Clean up the place to dump the string
   bzero(directory->name, sizeof(directory->name));
 
   // Read the name into the directory
-  readBlockBytes(disk_info, inode->i_block[block_index], (int8_t*)directory->name,
-                 directory->name_len, directory_index + 8);
-  // readFile(disk_info, inode, (int8_t*)directory->name, directory->name_len, directory_index + 8);
+  // readBlockBytes(disk_info, inode->i_block[block_index], (int8_t*)directory->name,
+  //              directory->name_len, directory_index + 8);
+  readFile(disk_info, inode, (int8_t*)directory->name, directory->name_len, directory_index + 8);
 
   return 8 + directory->name_len;
 }
@@ -396,6 +394,8 @@ void readFile(DiskInfo* disk_info, INode* inode, int8_t* buffer, int32_t bytes,
   int32_t offset_blocks = offset_bytes / disk_info->block_size;
 
   bzero(buffer, bytes);
+
+  printf("io: readFile(): info: Reading from %d to %d\n", offset_bytes, offset_bytes + bytes);
 
   // Set upperbound to amount of blocks the INode has
   if (blocks_to_read > inode->i_blocks) {

@@ -4,6 +4,7 @@
  * @brief Prints the menu
  */
 void printMenu() {
+  printf("shell: ");
   for (int32_t pos = 0; pos < kCommandCount; pos++) {
     printf("%s ", kPrintCommands[pos]);
   }
@@ -16,25 +17,22 @@ void printMenu() {
  * @param ext_info
  */
 void printDiskInfomation(ExtInfo* ext_info, DiskInfo* disk_info) {
-  printf("\nEX2 Filesystem loaded: {\n");
-  printf("%20s: %10s\n", "Volume Name", ext_info->super_block.s_volume_name);
-  printf("%20s: %10s\n", "Last Mount Path", ext_info->super_block.s_last_mounted);
+  printf("%17s: %10s\n", "Volume Name", ext_info->super_block.s_volume_name);
+  printf("%17s: %10s\n", "Last Mount Path", ext_info->super_block.s_last_mounted);
 
-  printf("%20s: %10u\n", "Blocks per Group", ext_info->super_block.s_blocks_per_group);
-  printf("%20s: %10li\n", "Blocks Count",
+  printf("%17s: %10u\n", "Blocks per Group", ext_info->super_block.s_blocks_per_group);
+  printf("%17s: %10li\n", "Blocks Count",
          (int64_t)ext_info->super_block.s_blocks_count_hi << 32 |
            ext_info->super_block.s_blocks_count);
-  printf("%20s: %10li\n", "Free Blocks Count",
+  printf("%17s: %10li\n", "Free Blocks Count",
          (int64_t)ext_info->super_block.s_free_blocks_hi << 32 |
            ext_info->super_block.s_free_blocks_count);
-  printf("%20s: %10u\n", "Block Size", 1024 << ext_info->super_block.s_log_block_size);
-  printf("%20s: %10u\n", "First Block", ext_info->super_block.s_first_data_block);
-  printf("%20s: %10u\n", "INode Count", ext_info->super_block.s_inodes_count);
-  printf("%20s: %10u\n", "First INode", ext_info->super_block.s_first_ino);
-  printf("%20s: %10u\n", "Free INodes", ext_info->super_block.s_free_inodes_count);
-  printf("%20s: %10u\n", "INodes per Group", ext_info->super_block.s_inodes_per_group);
-
-  printf("}\n\n");
+  printf("%17s: %10u\n", "Block Size", 1024 << ext_info->super_block.s_log_block_size);
+  printf("%17s: %10u\n", "First Block", ext_info->super_block.s_first_data_block);
+  printf("%17s: %10u\n", "INode Count", ext_info->super_block.s_inodes_count);
+  printf("%17s: %10u\n", "First INode", ext_info->super_block.s_first_ino);
+  printf("%17s: %10u\n", "Free INodes", ext_info->super_block.s_free_inodes_count);
+  printf("%17s: %10u\n", "INodes per Group", ext_info->super_block.s_inodes_per_group);
 }
 
 /**
@@ -44,11 +42,11 @@ void printDiskInfomation(ExtInfo* ext_info, DiskInfo* disk_info) {
  */
 void printGroupDesc(GroupDesc* group_desc) {
   printf("Group Desc: {\n");
-  printf("%20s: %10i\n", "Free Blocks", group_desc->bg_free_blocks_count);
-  printf("%20s: %10i\n", "Free INodes", group_desc->bg_free_inodes_count);
-  printf("%20s: %10i\n", "Used Dir Count", group_desc->bg_used_dirs_count);
-  printf("%20s: %10i\n", "Block Bitmap", group_desc->bg_block_bitmap);
-  printf("%20s: %10i\n", "INode Bitmap", group_desc->bg_inode_bitmap);
+  printf("%17s: %10i\n", "Free Blocks", group_desc->bg_free_blocks_count);
+  printf("%17s: %10i\n", "Free INodes", group_desc->bg_free_inodes_count);
+  printf("%17s: %10i\n", "Used Dir Count", group_desc->bg_used_dirs_count);
+  printf("%17s: %10i\n", "Block Bitmap", group_desc->bg_block_bitmap);
+  printf("%17s: %10i\n", "INode Bitmap", group_desc->bg_inode_bitmap);
   printf("}\n");
 }
 
@@ -96,9 +94,9 @@ void printDirectory(DiskInfo* disk_info, Directory* directory) {
 
   printf("%3d ", inode.i_blocks);
   printMode(inode.i_mode);
-  printf("%2d ", inode.i_links_count);
-  printf("%2d ", inode.i_uid);
-  printf("%2d ", inode.i_gid);
+  printf("%3d ", inode.i_links_count);
+  printf("%5d ", inode.i_uid);
+  printf("%5d ", inode.i_gid);
   printf("%10li ", (int64_t)inode.i_size_high << 32 | inode.i_size);
   printf("%s ", formatted_time);
   printf("%s\n", directory->name);
@@ -110,17 +108,16 @@ void printDirectory(DiskInfo* disk_info, Directory* directory) {
  * @param inode
  */
 void printINode(INode* inode) {
-  printf("INode: {\n");
-  printf("%20s: %10i\n", "Size", inode->i_size);
-  printf("%20s: %10i\n", "Blocks", inode->i_blocks);
+  printf("%10s: %10i\n", "Size", inode->i_size);
+  printf("%10s: %10i\n", "Blocks", inode->i_blocks);
 
   for (int32_t pos = 0; pos < 15; pos++) {
-    printf("%15s[%3i]: %10i\n", "Block", pos, inode->i_block[pos]);
+    printf("%5s[%3i]: %10i\n", "Block", pos, inode->i_block[pos]);
   }
 
-  printf("%20s: ", "Mode");
+  printf("%10s: ", "Mode");
   printMode(inode->i_mode);
-  printf("\n}\n");
+  printf("\n");
 }
 
 /**
@@ -172,9 +169,6 @@ void printBitmap(int8_t bitmap) {
  */
 void printFile(DiskInfo* disk_info, INode* file) {
   int8_t* seriously_the_entire_file = (int8_t*)calloc(sizeof(int8_t), file->i_size);
-
-  printf("Found file: ");
-  printINode(file);
 
   readFile(disk_info, file, seriously_the_entire_file, file->i_size, 0);
 

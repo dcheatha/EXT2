@@ -10,8 +10,9 @@
 /**
  * @brief List of commands as strings
  */
-static const char* kPrintCommands[] = { "LS",   "MKDIR", "RMDIR", "CREATE", "LINK", "UNLINK",
-                                        "MKFS", "CAT",   "CP",    "MENU",   "CD" };
+static const char* kPrintCommands[] = { "ls",     "mkdir",    "rmdir", "create", "link",
+                                        "unlink", "mkfs",     "cat",   "cp",     "help",
+                                        "cd",     "diskinfo", "inode" };
 
 /**
  * @brief Count of commands
