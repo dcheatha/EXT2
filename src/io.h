@@ -10,6 +10,8 @@
 #include <string.h>
 #include <unistd.h>
 
+enum IOMode { IOMODE_READ, IOMODE_WRITE } typedef IOMode;
+
 /**
  * @brief Keeps track of the indirect block names
  */
