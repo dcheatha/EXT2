@@ -8,7 +8,7 @@
 void runLS(State* state, char* parameter) {
   Directory found_file;
 
-  if (findPath(state, parameter, &found_file) == EXIT_FAILURE) {
+  if (findPath(state, &found_file, parameter) == EXIT_FAILURE) {
     printf("ls: %s: No such file or directory\n", parameter);
     return;
   }
@@ -30,12 +30,12 @@ void runLS(State* state, char* parameter) {
 void runMKDIR(State* state, char* parameter) {
   Directory parent_folder;
 
-  if (findPathExists(state, parameter) == EXIT_SUCCESS) {
+  if (pathExists(state, parameter) == EXIT_SUCCESS) {
     printf("mkdir: cannot create directory: '%s': File exists\n", parameter);
     return;
   }
 
-  if (findPathParent(state, parameter, &parent_folder) == EXIT_FAILURE) {
+  if (findPathParent(state, &parent_folder, parameter) == EXIT_FAILURE) {
     printf("mkdir: cannot create directory: '%s': No such file or directory\n", parameter);
     return;
   }
@@ -76,14 +76,14 @@ void runRMDIR(State* state, char* parameter) {
   }
 
   // Check and see if the path exists
-  if (readPathExists(state, parameter) == EXIT_FAILURE) {
+  if (pathExists(state, parameter) == EXIT_FAILURE) {
     printf("rmdir: %s: No such file or directory\n", parameter);
     return;
   }
 
   // Load it if the path exists
-  readPath(state, parameter, &folder_to_remove);
-  readPathParent(state, parameter, &parent_folder);
+  findPath(state, &folder_to_remove, parameter);
+  findPathParent(state, &parent_folder, parameter);
 
   // Make sure we're removing a dir
   if (folder_to_remove.file_type != EXT2_FT_DIR) {
@@ -94,8 +94,9 @@ void runRMDIR(State* state, char* parameter) {
   // Make sure it's an empty dir
   INode     first_item_inode;
   Directory first_item;
-  readINode(state->disk_info, folder_to_remove.inode, &first_item_inode);
-  readDirectory(state->disk_info, &first_item_inode, &first_item, (8 + 1) + (8 + 2));
+  ioINode(state->disk_info, &first_item_inode, folder_to_remove.inode, IOMODE_READ);
+  ioDirectoryEntry(state->disk_info, &first_item, &first_item_inode, (8 + 1) + (8 + 2),
+                   IOMODE_READ);
 
   if (!isEndDirectory(&first_item)) {
     printf("rmdir: %s: Directory not empty\n", parameter);
@@ -103,12 +104,13 @@ void runRMDIR(State* state, char* parameter) {
   }
 
   // Store the INode in memory before we start killing things:
-  readINode(state->disk_info, folder_to_remove.inode, &to_remove_inode);
+  ioINode(state->disk_info, &to_remove_inode, folder_to_remove.inode, IOMODE_READ);
 
   // Now we can dealloc the dir
   deallocateDirectoryEntry(state->disk_info, parent_folder.inode, stub);
 
   // And get rid of the INode!
+  deallocateINode(state->disk_info, folder_to_remove.inode);
 }
 
 /**
@@ -120,7 +122,7 @@ void runRMDIR(State* state, char* parameter) {
 void runCAT(State* state, char* parameter) {
   Directory found_file;
 
-  if (readPath(state, parameter, &found_file) == EXIT_FAILURE) {
+  if (findPath(state, &found_file, parameter) == EXIT_FAILURE) {
     printf("cat: %s: No such file or directory\n", parameter);
     return;
   }
@@ -131,7 +133,7 @@ void runCAT(State* state, char* parameter) {
   }
 
   INode inode;
-  readINode(state->disk_info, found_file.inode, &inode);
+  ioINode(state->disk_info, &inode, found_file.inode, IOMODE_READ);
 
   printFile(state->disk_info, &inode);
 }
@@ -185,12 +187,12 @@ void runCP(State* state, char* parameter) {
 void runCREATE(State* state, char* parameter) {
   Directory parent_folder;
 
-  if (readPathExists(state, parameter) == EXIT_SUCCESS) {
+  if (pathExists(state, parameter) == EXIT_SUCCESS) {
     printf("create: cannot create file: '%s': File exists\n", parameter);
     return;
   }
 
-  if (readPathParent(state, parameter, &parent_folder) == EXIT_FAILURE) {
+  if (findPathParent(state, &parent_folder, parameter) == EXIT_FAILURE) {
     printf("create: cannot create file: '%s': No such file or directory\n", parameter);
     return;
   }
@@ -206,73 +208,21 @@ void runCREATE(State* state, char* parameter) {
   allocateDirectoryEntry(state->disk_info, parent_folder.inode, &new_file);
 }
 
-void runLINK(State* state, char* parameter) {
-  Directory parent_folder;
-  Directory source_file;
-  Directory dest_file;
+/**
+ * @brief Links a link
+ *
+ * @param state
+ * @param parameter
+ */
+void runLINK(State* state, char* parameter) {}
 
-  char source[EXT2_NAME_LEN];
-  char dest[EXT2_NAME_LEN];
-
-  char* token = strtok(parameter, " ");
-  strcpy(source, token);
-  token = strtok(parameter, " ");
-  strcpy(dest, token);
-
-  if (readPathParent(state, dest, &parent_folder) == EXIT_FAILURE) {
-    printf("link: cannot create file: '%s': No such file or directory\n", dest);
-    return;
-  }
-
-  if (readPath(state, source, &source_file) == EXIT_FAILURE) {
-    printf("link: %s: No such file or directory\n", source);
-    return;
-  }
-
-  strcpy(dest_file.name, dest);
-  dest_file.name_len  = strlen(dest_file.name);
-  dest_file.file_type = EXT2_FT_REG_FILE;
-  dest_file.rec_len   = 8 + strlen(dest_file.name);
-  dest_file.inode     = source_file.inode;
-
-  allocateDirectoryEntry(state->disk_info, parent_folder.inode, &dest_file);
-
-  INode inode;
-  readINode(state->disk_info, dest_file.inode, &inode);
-  inode.i_links_count++;
-  writeINode(state->disk_info, dest_file.inode, &inode);
-}
-
-void runUNLINK(State* state, char* parameter) {
-  Directory parent_folder;
-  Directory to_kill;
-
-  if (readPathParent(state, parameter, &parent_folder) == EXIT_FAILURE) {
-    printf("unlink: cannot create file: '%s': No such file or directory\n", parameter);
-    return;
-  }
-
-  if (readPath(state, parameter, &to_kill) == EXIT_FAILURE) {
-    printf("unlink: %s: No such file or directory\n", parameter);
-    return;
-  }
-
-  char stub[EXT2_NAME_LEN] = { 0 };
-
-  getParameterStub(parameter, stub);
-
-  deallocateDirectoryEntry(state->disk_info, parent_folder.inode, stub);
-
-  INode inode;
-  readINode(state->disk_info, to_kill.inode, &inode);
-  inode.i_links_count--;
-
-  if (inode.i_links_count == 0) {
-    deallocateINode(state->disk_info, to_kill.inode);
-  } else {
-    writeINode(state->disk_info, to_kill.inode, &inode);
-  }
-}
+/**
+ * @brief Unlinks a link
+ *
+ * @param state
+ * @param parameter
+ */
+void runUNLINK(State* state, char* parameter) {}
 
 /**
  * @brief Inits the filesystem
@@ -312,12 +262,12 @@ void runINODEINFO(State* state, char* parameter) {
   Directory found_file;
   INode     inode;
 
-  if (readPath(state, parameter, &found_file) == EXIT_FAILURE) {
+  if (findPath(state, &found_file, parameter) == EXIT_FAILURE) {
     printf("inode: %s: No such file or directory\n", parameter);
     return;
   }
 
-  readINode(state->disk_info, found_file.inode, &inode);
+  ioINode(state->disk_info, &inode, found_file.inode, IOMODE_READ);
 
   printINode(&inode);
 }
