@@ -8,7 +8,7 @@
 void runLS(State* state, char* parameter) {
   Directory found_file;
 
-  if (readPath(state, parameter, &found_file) == EXIT_FAILURE) {
+  if (findPath(state, parameter, &found_file) == EXIT_FAILURE) {
     printf("ls: %s: No such file or directory\n", parameter);
     return;
   }
@@ -30,12 +30,12 @@ void runLS(State* state, char* parameter) {
 void runMKDIR(State* state, char* parameter) {
   Directory parent_folder;
 
-  if (readPathExists(state, parameter) == EXIT_SUCCESS) {
+  if (findPathExists(state, parameter) == EXIT_SUCCESS) {
     printf("mkdir: cannot create directory: '%s': File exists\n", parameter);
     return;
   }
 
-  if (readPathParent(state, parameter, &parent_folder) == EXIT_FAILURE) {
+  if (findPathParent(state, parameter, &parent_folder) == EXIT_FAILURE) {
     printf("mkdir: cannot create directory: '%s': No such file or directory\n", parameter);
     return;
   }

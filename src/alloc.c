@@ -25,8 +25,8 @@ int32_t allocateBlock(DiskInfo* disk_info) {
   int8_t    buffer[disk_info->block_size];
 
   for (int32_t group = 0; group < disk_info->group_count; group++) {
-    readGroupDesc(disk_info, group, &group_desc);
-    readBlock(disk_info, group_desc.bg_block_bitmap, (int8_t*)&buffer);
+    ioGroupDescriptor(disk_info, &group_desc, group, IOMODE_READ);
+    ioBlock(disk_info, group_desc.bg_block_bitmap, (int8_t*)&buffer, IOMODE_READ);
 
     for (int32_t pos = 0; pos < disk_info->blocks_per_group / 8; pos++) {
       int32_t bit = findFreeBit(buffer[pos], 0);
@@ -38,7 +38,7 @@ int32_t allocateBlock(DiskInfo* disk_info) {
         buffer[pos] |= (1 << bit);
 
         // Just write the entire block back to the disk
-        writeBlock(disk_info, group_desc.bg_block_bitmap, (int8_t*)&buffer);
+        ioBlock(disk_info, group_desc.bg_block_bitmap, (int8_t*)&buffer, IOMODE_WRITE);
 
         return free_block_pos;
       }
@@ -68,17 +68,17 @@ void deallocateBlock(DiskInfo* disk_info, int32_t block_no) {
 
   // Dump 0's to the block we're deallocing
   bzero(buffer, disk_info->block_size);
-  writeBlock(disk_info, block_no, (int8_t*)&buffer);
+  ioBlock(disk_info, block_no, (int8_t*)&buffer, IOMODE_WRITE);
 
   // Read the group desc and find the right block
-  readGroupDesc(disk_info, group, &group_desc);
-  readBlock(disk_info, group_desc.bg_block_bitmap, (int8_t*)&buffer);
+  ioGroupDescriptor(disk_info, &group_desc, group, IOMODE_READ);
+  ioBlock(disk_info, group_desc.bg_block_bitmap, (int8_t*)&buffer, IOMODE_READ);
 
   // Flip the offending bit
   buffer[pos] &= ~(1 << bit);
 
   // Dump the bitmap back down to the disk
-  writeBlock(disk_info, group_desc.bg_block_bitmap, (int8_t*)&buffer);
+  ioBlock(disk_info, group_desc.bg_block_bitmap, (int8_t*)&buffer, IOMODE_WRITE);
 }
 
 /**
@@ -91,11 +91,11 @@ void deallocateBlock(DiskInfo* disk_info, int32_t block_no) {
 void allocateDirectoryEntry(DiskInfo* disk_info, int32_t inode_no, Directory* directory) {
   INode     root_inode;
   Directory root_dir;
-  int32_t   read_index  = 0;
-  int32_t   write_index = 0;
+  int64_t   read_index  = 0;
+  int64_t   write_index = 0;
   time_t    now         = time(NULL);
 
-  readINode(disk_info, inode_no, &root_inode);
+  ioINode(disk_info, &root_inode, inode_no, IOMODE_READ);
 
   while (1) {
     // Read index must be a multiple of 4 to start a directory entry
@@ -103,7 +103,7 @@ void allocateDirectoryEntry(DiskInfo* disk_info, int32_t inode_no, Directory* di
       read_index += 4 - (read_index % 4);
     }
 
-    read_index += readDirectory(disk_info, &root_inode, &root_dir, read_index);
+    read_index += ioDirectoryEntry(disk_info, &root_dir, &root_inode, read_index, IOMODE_READ);
 
     if (isEndDirectory(&root_dir)) {
       // We've found the end dir! Now we overrwrite it with the new dir:
@@ -115,16 +115,15 @@ void allocateDirectoryEntry(DiskInfo* disk_info, int32_t inode_no, Directory* di
       }
 
       // Write the new directory entry to the disk:
-      write_index += writeDirectory(disk_info, &root_inode, directory, write_index);
+      write_index += ioDirectoryEntry(disk_info, &root_dir, directory, write_index, IOMODE_WRITE);
 
       // Now write the end dir back:
-      write_index += writeDirectory(disk_info, &root_inode, &root_dir, write_index);
-
+      write_index += ioDirectoryEntry(disk_info, &root_dir, &root_dir, write_index, IOMODE_WRITE);
       // Now increase INode link count (The root dir now links to it)
       root_inode.i_links_count++;
       root_inode.i_atime = now;
       // And write the INode back to disk:
-      writeINode(disk_info, inode_no, &root_inode);
+      ioINode(disk_info, &root_inode, inode_no, IOMODE_WRITE);
       return;
     }
   }
@@ -145,7 +144,7 @@ void deallocateDirectoryEntry(DiskInfo* disk_info, int32_t inode_no, char* to_re
   int32_t read_index  = 0;
   int32_t write_index = 0;
 
-  readINode(disk_info, inode_no, &root_inode);
+  ioINode(disk_info, &root_inode, inode_no, IOMODE_READ);
 
   // Scan for the dir we want
   while (1) {
@@ -153,7 +152,7 @@ void deallocateDirectoryEntry(DiskInfo* disk_info, int32_t inode_no, char* to_re
       read_index += 4 - (read_index % 4);
     }
 
-    read_index += readDirectory(disk_info, &root_inode, &current_dir, read_index);
+    read_index += ioDirectoryEntry(disk_info, &current_dir, &root_inode, read_index, IOMODE_READ);
 
     if (strcmp(to_remove_name, current_dir.name) == 0) {
       // We found our guy to remove!
@@ -172,12 +171,13 @@ void deallocateDirectoryEntry(DiskInfo* disk_info, int32_t inode_no, char* to_re
       write_index += 4 - (write_index % 4);
     }
 
-    read_index += readDirectory(disk_info, &root_inode, &current_dir, read_index);
-    write_index += writeDirectory(disk_info, &root_inode, &current_dir, write_index);
+    read_index += ioDirectoryEntry(disk_info, &current_dir, &root_inode, read_index, IOMODE_READ);
+    write_index +=
+      ioDirectoryEntry(disk_info, &current_dir, &root_inode, write_index, IOMODE_WRITE);
 
     if (isEndDirectory(&current_dir)) {
       bzero(&current_dir, sizeof(Directory));
-      writeDirectory(disk_info, &root_inode, &current_dir, write_index);
+      ioDirectoryEntry(disk_info, &current_dir, &root_inode, write_index, IOMODE_WRITE);
       return;
     }
   }
@@ -196,8 +196,8 @@ int32_t allocateINode(State* state) {
   int8_t    buffer[state->disk_info->block_size];
 
   for (int32_t group = 0; group < state->disk_info->group_count; group++) {
-    readGroupDesc(state->disk_info, group, &group_desc);
-    readBlock(state->disk_info, group_desc.bg_inode_bitmap, (int8_t*)&buffer);
+    ioGroupDescriptor(state->disk_info, &group_desc, group, IOMODE_READ);
+    ioBlock(state->disk_info, group_desc.bg_inode_bitmap, (int8_t*)&buffer, IOMODE_READ);
 
     for (int32_t pos = 0; pos < state->disk_info->inodes_per_group / 8; pos++) {
       int32_t bit = findFreeBit(buffer[pos], 0);
@@ -209,7 +209,7 @@ int32_t allocateINode(State* state) {
         buffer[pos] |= (1 << (bit));
 
         // Just write the entire block back to the disk
-        writeBlock(state->disk_info, group_desc.bg_inode_bitmap, (int8_t*)&buffer);
+        ioBlock(state->disk_info, group_desc.bg_inode_bitmap, (int8_t*)&buffer, IOMODE_WRITE);
 
         int16_t current_time = time(NULL);
         // Prep the INode with our standard data so we don't have to deal with it later:
@@ -225,7 +225,7 @@ int32_t allocateINode(State* state) {
                         0,
                         0 };
 
-        writeINode(state->disk_info, free_inode_pos, &inode);
+        ioINode(state->disk_info, &inode, free_inode_pos, IOMODE_WRITE);
 
         // Now we know which INode we have
         return free_inode_pos;
@@ -248,27 +248,27 @@ void deallocateINode(DiskInfo* disk_info, int32_t inode_no) {
   INode     inode;
   int8_t    buffer[disk_info->block_size];
 
-  int32_t group = inode_no / disk_info->inodes_per_group;
-  int32_t pos   = inode_no % (disk_info->inodes_per_group / 8);
-  int8_t  bit   = pos % 8;
+  int32_t group_no = inode_no / disk_info->inodes_per_group;
+  int32_t pos      = inode_no % (disk_info->inodes_per_group / 8);
+  int8_t  bit      = pos % 8;
 
-  readINode(disk_info, inode_no, &inode);
+  ioINode(disk_info, &inode, inode_no, IOMODE_READ);
 
   // TODO: Kill all the blocks alloc'd in the INode.
 
   // Dump 0's to the block we're deallocing
   bzero(&inode, sizeof(INode));
-  writeINode(disk_info, inode_no, &inode);
+  ioINode(disk_info, &inode, inode_no, IOMODE_WRITE);
 
   // Read the group desc and find the right block
-  readGroupDesc(disk_info, group, &group_desc);
-  readBlock(disk_info, group_desc.bg_inode_bitmap, (int8_t*)&buffer);
+  ioGroupDescriptor(disk_info, &group_desc, group_no, IOMODE_READ);
+  ioBlock(disk_info, group_desc.bg_inode_bitmap, (int8_t*)&buffer, IOMODE_READ);
 
   // Flip the offending bit
   buffer[pos] &= ~(1 << bit);
 
   // Dump the bitmap back down to the disk
-  writeBlock(disk_info, group_desc.bg_inode_bitmap, (int8_t*)&buffer);
+  ioBlock(disk_info, group_desc.bg_inode_bitmap, (int8_t*)&buffer, IOMODE_WRITE);
 }
 
 /**
@@ -284,7 +284,7 @@ void allocateDirectoryTable(State* state, Directory* parent_dir, Directory* new_
 
   // Create the INode and dump it to the disk
   INode inode;
-  readINode(state->disk_info, inode_no, &inode);
+  ioINode(state->disk_info, &inode, inode_no, IOMODE_READ);
   // bzero(&inode, sizeof(INode));
 
   inode.i_mode |= EXT2_S_IFDIR;
@@ -298,7 +298,7 @@ void allocateDirectoryTable(State* state, Directory* parent_dir, Directory* new_
   inode.i_ctime = time(NULL);
   inode.i_mtime = time(NULL);
 
-  writeINode(state->disk_info, inode_no, &inode);
+  ioINode(state->disk_info, &inode, inode_no, IOMODE_WRITE);
 
   new_dir->inode = inode_no;
 
@@ -312,6 +312,6 @@ void allocateDirectoryTable(State* state, Directory* parent_dir, Directory* new_
       offset += 4 - (offset % 4);
     }
 
-    offset += writeDirectory(state->disk_info, &inode, &dirs[pos], offset);
+    offset += ioDirectoryEntry(state->disk_info, &dirs[pos], &inode, offset, IOMODE_WRITE);
   }
 }

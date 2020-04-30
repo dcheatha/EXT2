@@ -84,7 +84,7 @@ void printDirectory(DiskInfo* disk_info, Directory* directory) {
   INode inode;
 
   // Pull the INode up from the disk
-  readINode(disk_info, directory->inode, &inode);
+  ioINode(disk_info, &inode, directory->inode, IOMODE_READ);
 
   struct tm* time_struct;
   char       formatted_time[20] = { 0 };
@@ -129,16 +129,17 @@ void printINode(INode* inode) {
 void printDirectoryTable(DiskInfo* disk_info, int32_t inode_start) {
   INode     root_inode;
   Directory root_dir;
-  int32_t   dir_index = 0;
+  int64_t   directory_offset = 0;
 
-  readINode(disk_info, inode_start, &root_inode);
+  ioINode(disk_info, &root_inode, inode_start, IOMODE_READ);
 
   while (1) {
-    if (dir_index % 4 != 0) {
-      dir_index += 4 - (dir_index % 4);
+    if (directory_offset % 4 != 0) {
+      directory_offset += 4 - (directory_offset % 4);
     }
 
-    dir_index += readDirectory(disk_info, &root_inode, &root_dir, dir_index);
+    directory_offset +=
+      ioDirectoryEntry(disk_info, &root_dir, &root_inode, directory_offset, IOMODE_READ);
 
     if (isEndDirectory(&root_dir)) {
       break;
@@ -170,7 +171,7 @@ void printBitmap(int8_t bitmap) {
 void printFile(DiskInfo* disk_info, INode* file) {
   int8_t* seriously_the_entire_file = (int8_t*)calloc(sizeof(int8_t), file->i_size);
 
-  readFile(disk_info, file, seriously_the_entire_file, file->i_size, 0);
+  ioFile(disk_info, seriously_the_entire_file, file, file->i_size, 0, IOMODE_READ);
 
   printf("%s\n", seriously_the_entire_file);
 

@@ -20,175 +20,83 @@ enum IOMode { IOMODE_READ, IOMODE_WRITE } typedef IOMode;
 #define EXT2_INDIRECT_TRIPLE 14
 
 /**
- * @brief Reads bytes from the disk
+ * @brief Does an IO operation on a sequence of bytes on the disk
  *
  * @param disk_info
- * @param offset
  * @param buffer
- * @param bytes
+ * @param length
+ * @param offset
+ * @param mode
  */
-void readBytes(DiskInfo* disk_info, int32_t offset, int8_t* buffer, int64_t bytes);
+void ioBytes(DiskInfo* disk_info, int8_t* buffer, int64_t length, int64_t offset, IOMode mode);
 
 /**
- * @brief Writes bytes to the disk
- *
- * @param disk_info
- * @param offset
- * @param buffer
- * @param bytes
- */
-void writeBytes(DiskInfo* disk_info, int32_t offset, int8_t* buffer, int64_t bytes);
-
-/**
- * @brief Reads an entire block
+ * @brief Does an IO operation on a block
  *
  * @param disk_info
  * @param block
  * @param buffer
+ * @param mode
  */
-void readBlock(DiskInfo* disk_info, int64_t block, int8_t* buffer);
+void ioBlock(DiskInfo* disk_info, int64_t block, int8_t* buffer, IOMode mode);
 
 /**
- * @brief Writes an entire block
+ * @brief Does an IO operation on a portion of a block
  *
  * @param disk_info
- * @param block
  * @param buffer
- */
-void writeBlock(DiskInfo* disk_info, int64_t block, int8_t* buffer);
-
-/**
- * @brief Reads part of a block
- *
- * @param disk_info
  * @param block
- * @param buffer
- * @param bytes
+ * @param length
  * @param offset
+ * @param mode
  */
-void readBlockBytes(DiskInfo* disk_info, int64_t block, int8_t* buffer, int64_t bytes,
-                    int64_t offset);
+void ioBlockPart(DiskInfo* disk_info, int8_t* buffer, int64_t block, int64_t length, int64_t offset,
+                 IOMode mode);
 
 /**
- * @brief Writes to part of a block
- *
- * @param disk_info
- * @param block
- * @param buffer
- * @param bytes
- * @param offset
- */
-void writeBlockBytes(DiskInfo* disk_info, int64_t block, int8_t* buffer, int64_t bytes,
-                     int64_t offset);
-
-/**
- * @brief Reads a group desc for a group
+ * @brief Does an IO operation on a group descriptor
  *
  * @param disk_info
  * @param group
- * @param group_desc
+ * @param group_no
+ * @param mode
  */
-void readGroupDesc(DiskInfo* disk_info, int64_t group, GroupDesc* group_desc);
+void ioGroupDescriptor(DiskInfo* disk_info, GroupDesc* group, int64_t group_no, IOMode mode);
 
 /**
- * @brief Reads an INode from the disk
- *
- * @param disk_info
- * @param number
- * @param i_node
- */
-void readINode(DiskInfo* disk_info, int32_t number, INode* i_node);
-
-/**
- * @brief Writes an INode to the disk
- *
- * @param disk_info
- * @param number
- * @param i_node
- */
-void writeINode(DiskInfo* disk_info, int32_t number, INode* i_node);
-
-/**
- * @brief Reads from the blocks specified by an INode in order
+ * @brief Does an IO operation on an INode
  *
  * @param disk_info
  * @param inode
- * @param buffer
- * @param bytes
+ * @param inode_no
+ * @param mode
  */
-void readINodeData(DiskInfo* disk_info, INode* inode, int8_t* buffer, int32_t bytes);
+void ioINode(DiskInfo* disk_info, INode* inode, int64_t inode_no, IOMode mode);
 
 /**
- * @brief Reads a directory entry given an INode with dir data
+ * @brief Does an IO operation on a directory entry
  *
  * @param disk_info
- * @param inode
  * @param directory
- * @param offset
- * @return int
+ * @param inode
+ * @param offset in bytes
+ * @param mode
+ * @return int64_t offset in bytes after seeking is done
  */
-int32_t readDirectory(DiskInfo* disk_info, INode* inode, Directory* directory, int32_t offset);
+int64_t ioDirectoryEntry(DiskInfo* disk_info, Directory* directory, INode* inode, int64_t offset,
+                         IOMode mode);
 
 /**
- * @brief Writes a directory entry given an INode
+ * @brief Does an IO operation on a file (really, just the data in an INode)
  *
  * @param disk_info
- * @param inode
- * @param directory
- * @param offset
- * @return int
- */
-int32_t writeDirectory(DiskInfo* disk_info, INode* inode, Directory* directory, int32_t offset);
-
-/**
- * @brief Give this a path string and it returns the Dir for the file, if it exists
- *
- * @param state
- * @param parameter
- * @param found_file
- * @return int32_t
- */
-int32_t readPath(State* state, char* parameter, Directory* found_file);
-
-/**
- * @brief Like readPath, but returns the parent dir
- *
- * @param state
- * @param parameter
- * @param found_file
- * @return int32_t
- */
-int32_t readPathParent(State* state, char* parameter, Directory* found_file);
-
-/**
- * @brief Determines if a path exists
- *
- * @param state
- * @param parameter
- * @return int8_t
- */
-int8_t readPathExists(State* state, char* parameter);
-
-/**
- * @brief Reads a file
- *
- * @param disk_info
- * @param inode
  * @param buffer
- * @param bytes
- * @param offset
- */
-void readFile(DiskInfo* disk_info, INode* inode, int8_t* buffer, int32_t bytes, int32_t offset);
-
-/**
- * @brief Writes to a file
- *
- * @param disk_info
  * @param inode
- * @param buffer
- * @param bytes
+ * @param length
  * @param offset
+ * @param mode
  */
-void writeFile(DiskInfo* disk_info, INode* inode, int8_t* buffer, int32_t bytes, int32_t offset);
+void ioFile(DiskInfo* disk_info, int8_t* buffer, INode* inode, int64_t length, int64_t offset,
+            IOMode mode);
 
 #endif

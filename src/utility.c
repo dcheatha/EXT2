@@ -12,8 +12,8 @@
  */
 void initializeFilesystem(DiskInfo* disk_info, ExtInfo* ext_info) {
   // The superblock is located at an offset of 1024 bytes, ie, the first block.
-  readBytes(disk_info, SUPERBLOCK_OFFSET, (int8_t*)&ext_info->super_block,
-            sizeof(struct ext2_super_block));
+  ioBytes(disk_info, (int8_t*)&ext_info->super_block, sizeof(struct ext2_super_block),
+          SUPERBLOCK_OFFSET, IOMODE_READ);
 
   if (ext_info->super_block.s_magic != EXT2_SUPER_MAGIC) {
     printf("Magical error with s_magic=%x (is this an EXT2 filesystem?)\n",

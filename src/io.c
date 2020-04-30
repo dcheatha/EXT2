@@ -102,13 +102,13 @@ void ioINode(DiskInfo* disk_info, INode* inode, int64_t inode_no, IOMode mode) {
  * @brief Does an IO operation on a Directory Entry
  *
  * @param disk_info
- * @param inode
  * @param directory
+ * @param inode
  * @param offset
  * @param mode
  * @return int64_t
  */
-int64_t ioDirectoryEntry(DiskInfo* disk_info, INode* inode, Directory* directory, int64_t offset,
+int64_t ioDirectoryEntry(DiskInfo* disk_info, Directory* directory, INode* inode, int64_t offset,
                          IOMode mode) {
   int64_t block_index     = offset / disk_info->block_size;
   int64_t directory_index = offset % disk_info->block_size;
@@ -167,7 +167,7 @@ void ioFile(DiskInfo* disk_info, int8_t* buffer, INode* inode, int64_t length, i
     printf("io: ioFile(): warn: Requested to seek blocks %d to %d when there are only %d blocks\n",
            offset_blocks, blocks_to_io + offset_blocks, inode->i_blocks);
 
-    EXIT(EXIT_FAILURE);
+    exit(EXIT_FAILURE);
   }
 
   IndirectRange range      = calculateIndirectRange(disk_info);
@@ -209,7 +209,7 @@ void ioFile(DiskInfo* disk_info, int8_t* buffer, INode* inode, int64_t length, i
         (range.indirects_per_block * range.indirects_per_block * range.indirects_per_block);
       int32_t block_offset = sizeof(int32_t) * block_index;
 
-      ioblockpart(disk_info, (int8_t*)&block_no, inode->i_block[EXT2_INDIRECT_TRIPLE],
+      ioBlockPart(disk_info, (int8_t*)&block_no, inode->i_block[EXT2_INDIRECT_TRIPLE],
                   sizeof(int32_t), block_offset, IOMODE_READ);
     }
 
