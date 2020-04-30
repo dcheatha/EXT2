@@ -7,6 +7,7 @@
 #include "types.h"
 
 #include <stdlib.h>
+#include <strings.h>
 
 /**
  * @brief Reads and prepares data structures for Filesystem

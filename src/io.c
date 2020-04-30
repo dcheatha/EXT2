@@ -269,6 +269,10 @@ void ioFile(DiskInfo* disk_info, int8_t* buffer, INode* inode, int64_t length, i
     // Calculate which block we need to read:
     ioFileBlockHelper(disk_info, &block_no, inode, &range, block_pos);
 
+    if (block_no == 0) {
+      printf("io: ioFile(): error: Requested block 0\n");
+    }
+
     ioBlockPart(disk_info, buffer + buffer_pos, block_no, io_length, io_offset, mode);
     buffer_pos += io_length;
 

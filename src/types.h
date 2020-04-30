@@ -54,6 +54,8 @@ typedef struct disk_info {
   int32_t file_desc;
   int64_t block_size;
   int64_t block_count;
+  int64_t free_blocks;
+  int64_t free_inodes;
   int64_t inode_count;
   int32_t s_log_block_size;
   int32_t inodes_per_group;
@@ -91,6 +93,7 @@ enum Command {
   BLOCKBITMAP,
   INODEBITMAP,
   RAWBLOCK,
+  PWD
 } typedef Command;
 
 /**

@@ -46,7 +46,7 @@ int32_t allocateBlock(DiskInfo* disk_info) {
         // Just write the entire block back to the disk
         ioBlock(disk_info, group_desc.bg_block_bitmap, (int8_t*)&buffer, IOMODE_WRITE);
 
-        printf("alloc: allocateBlock(): info: Alloc'd block %d\n", free_block_pos);
+        disk_info->free_blocks--;
 
         return free_block_pos;
       }
@@ -91,6 +91,7 @@ void deallocateBlock(DiskInfo* disk_info, int32_t block_no) {
 
   // Dump the bitmap back down to the disk
   ioBlock(disk_info, group_desc.bg_block_bitmap, (int8_t*)&buffer, IOMODE_WRITE);
+  disk_info->free_blocks++;
 }
 
 /**
@@ -241,6 +242,7 @@ int32_t allocateINode(State* state) {
 
         ioINode(state->disk_info, &inode, free_inode_pos, IOMODE_WRITE);
 
+        state->disk_info->free_inodes--;
         // Now we know which INode we have
         return free_inode_pos;
       }
@@ -258,8 +260,11 @@ int32_t allocateINode(State* state) {
  * @param blocks_count
  */
 void allocateINodeBlocks(DiskInfo* disk_info, INode* inode, int64_t blocks_count) {
-  IndirectRange range = calculateIndirectRange(disk_info);
-  for (int64_t block_pos = 0; block_pos < blocks_count; block_pos++) {
+  IndirectRange range          = calculateIndirectRange(disk_info);
+  int64_t       alloced_blocks = 0;
+
+  for (int64_t block_pos = 0; block_pos < blocks_count && alloced_blocks < blocks_count;
+       block_pos++) {
     int32_t block_no = 0;
 
     if (block_pos >= range.triple_start) {
@@ -270,6 +275,7 @@ void allocateINodeBlocks(DiskInfo* disk_info, INode* inode, int64_t blocks_count
 
       if (inode->i_block[EXT2_INDIRECT_TRIPLE] == 0) {
         inode->i_block[EXT2_INDIRECT_TRIPLE] = allocateBlock(disk_info);
+        alloced_blocks++;
       }
 
       ioBlockPart(disk_info, (int8_t*)&block_no, inode->i_block[EXT2_INDIRECT_TRIPLE],
@@ -277,6 +283,7 @@ void allocateINodeBlocks(DiskInfo* disk_info, INode* inode, int64_t blocks_count
 
       if (block_no == 0) {
         block_no = allocateBlock(disk_info);
+        alloced_blocks++;
         ioBlockPart(disk_info, (int8_t*)&block_no, inode->i_block[EXT2_INDIRECT_TRIPLE],
                     sizeof(int32_t), block_offset, IOMODE_WRITE);
       }
@@ -290,6 +297,7 @@ void allocateINodeBlocks(DiskInfo* disk_info, INode* inode, int64_t blocks_count
 
       if (inode->i_block[EXT2_INDIRECT_DOUBLE] == 0) {
         inode->i_block[EXT2_INDIRECT_DOUBLE] = allocateBlock(disk_info);
+        alloced_blocks++;
       }
 
       // If triple indirect was NOT called, then work off of double indirect table
@@ -297,12 +305,15 @@ void allocateINodeBlocks(DiskInfo* disk_info, INode* inode, int64_t blocks_count
         block_no = inode->i_block[EXT2_INDIRECT_DOUBLE];
       }
 
+      int32_t redirect_block = block_no;
+
       ioBlockPart(disk_info, (int8_t*)&block_no, block_no, sizeof(int32_t), block_offset,
                   IOMODE_READ);
 
       if (block_no == 0) {
         block_no = allocateBlock(disk_info);
-        ioBlockPart(disk_info, (int8_t*)&block_no, block_no, sizeof(int32_t), block_offset,
+        alloced_blocks++;
+        ioBlockPart(disk_info, (int8_t*)&block_no, redirect_block, sizeof(int32_t), block_offset,
                     IOMODE_WRITE);
       }
     }
@@ -314,6 +325,7 @@ void allocateINodeBlocks(DiskInfo* disk_info, INode* inode, int64_t blocks_count
 
       if (inode->i_block[EXT2_INDIRECT_SINGLE] == 0) {
         inode->i_block[EXT2_INDIRECT_SINGLE] = allocateBlock(disk_info);
+        alloced_blocks++;
       }
 
       // If double indirect was NOT called, then work off of single indirect table
@@ -321,12 +333,15 @@ void allocateINodeBlocks(DiskInfo* disk_info, INode* inode, int64_t blocks_count
         block_no = inode->i_block[EXT2_INDIRECT_SINGLE];
       }
 
+      int32_t redirect_block = block_no;
+
       ioBlockPart(disk_info, (int8_t*)&block_no, block_no, sizeof(int32_t), block_offset,
                   IOMODE_READ);
 
       if (block_no == 0) {
         block_no = allocateBlock(disk_info);
-        ioBlockPart(disk_info, (int8_t*)&block_no, block_no, sizeof(int32_t), block_offset,
+        alloced_blocks++;
+        ioBlockPart(disk_info, (int8_t*)&block_no, redirect_block, sizeof(int32_t), block_offset,
                     IOMODE_WRITE);
       }
     }
@@ -336,7 +351,8 @@ void allocateINodeBlocks(DiskInfo* disk_info, INode* inode, int64_t blocks_count
       block_no = inode->i_block[block_pos];
 
       if (block_no == 0) {
-        block_no                  = allocateBlock(disk_info);
+        block_no = allocateBlock(disk_info);
+        alloced_blocks++;
         inode->i_block[block_pos] = block_no;
       }
     }
@@ -406,7 +422,7 @@ void deallocateINode(DiskInfo* disk_info, int32_t inode_no) {
   int8_t    buffer[disk_info->block_size];
 
   int32_t group_no = inode_no / disk_info->inodes_per_group;
-  int32_t pos      = inode_no % (disk_info->inodes_per_group / 8);
+  int32_t pos      = (inode_no % disk_info->inodes_per_group) / 8;
   int8_t  bit      = pos % 8;
 
   ioINode(disk_info, &inode, inode_no, IOMODE_READ);
@@ -439,6 +455,7 @@ void deallocateINode(DiskInfo* disk_info, int32_t inode_no) {
 
   // Dump the bitmap back down to the disk
   ioBlock(disk_info, group_desc.bg_inode_bitmap, (int8_t*)&buffer, IOMODE_WRITE);
+  disk_info->free_inodes++;
 }
 
 /**

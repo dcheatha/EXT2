@@ -94,9 +94,20 @@ void runRMDIR(State* state, char* parameter) {
   // Make sure it's an empty dir
   INode     first_item_inode;
   Directory first_item;
+  int64_t   read_index = 0;
   ioINode(state->disk_info, &first_item_inode, folder_to_remove.inode, IOMODE_READ);
-  ioDirectoryEntry(state->disk_info, &first_item, &first_item_inode, (8 + 1) + (8 + 2),
-                   IOMODE_READ);
+
+  for (int pos = 0; pos < 2; pos++) {
+    read_index +=
+      ioDirectoryEntry(state->disk_info, &first_item, &first_item_inode, read_index, IOMODE_READ);
+
+    if (read_index % 4 != 0) {
+      read_index += 4 - (read_index % 4);
+    }
+  }
+
+  read_index +=
+    ioDirectoryEntry(state->disk_info, &first_item, &first_item_inode, read_index, IOMODE_READ);
 
   if (!isEndDirectory(&first_item)) {
     printf("rmdir: %s: Directory not empty\n", parameter);
@@ -180,7 +191,6 @@ void runCP(State* state, char* parameter) {
   dest_file.file_type = EXT2_FT_REG_FILE;
   dest_file.rec_len   = 8 + strlen(dest_file.name);
   dest_file.inode     = allocateINode(state);
-  allocateDirectoryEntry(state->disk_info, parent_folder.inode, &dest_file);
 
   // Load the INodes we're about to copy
   INode dest_inode;
@@ -188,6 +198,13 @@ void runCP(State* state, char* parameter) {
   ioINode(state->disk_info, &dest_inode, dest_file.inode, IOMODE_READ);
   ioINode(state->disk_info, &source_inode, source_file.inode, IOMODE_READ);
 
+  if (state->disk_info->free_blocks < source_inode.i_blocks) {
+    printf("cp: Not enough free space (need %ld more blocks)\n",
+           source_inode.i_blocks - state->disk_info->free_blocks);
+    return;
+  }
+
+  allocateDirectoryEntry(state->disk_info, parent_folder.inode, &dest_file);
   // Allocate all of the blocks our dest INode will require:
   allocateINodeBlocks(state->disk_info, &dest_inode, source_inode.i_blocks);
 
@@ -238,7 +255,44 @@ void runCREATE(State* state, char* parameter) {
  * @param state
  * @param parameter
  */
-void runLINK(State* state, char* parameter) {}
+void runLINK(State* state, char* parameter) {
+  Directory parent_folder;
+  Directory source_file;
+  Directory dest_file;
+
+  char source[EXT2_NAME_LEN];
+  char dest[EXT2_NAME_LEN];
+
+  char* token = strtok(parameter, " ");
+  strcpy(dest, token);
+  token = strtok(NULL, " ");
+
+  if (token == NULL) {
+    printf("link: Must specify two paths\n");
+  }
+
+  strcpy(source, token);
+
+  if (findPath(state, &source_file, source) == EXIT_FAILURE) {
+    printf("link: %s: No such file or directory\n", source);
+    return;
+  }
+
+  findPathParent(state, &parent_folder, parameter);
+
+  INode source_inode;
+  ioINode(state->disk_info, &source_inode, source_file.inode, IOMODE_READ);
+  source_inode.i_links_count++;
+  ioINode(state->disk_info, &source_inode, source_file.inode, IOMODE_WRITE);
+
+  strcpy(dest_file.name, dest);
+  dest_file.name_len  = strlen(dest_file.name);
+  dest_file.file_type = source_file.file_type;
+  dest_file.rec_len   = 8 + strlen(dest_file.name);
+  dest_file.inode     = source_file.inode;
+
+  allocateDirectoryEntry(state->disk_info, parent_folder.inode, &dest_file);
+}
 
 /**
  * @brief Unlinks a link
@@ -246,7 +300,28 @@ void runLINK(State* state, char* parameter) {}
  * @param state
  * @param parameter
  */
-void runUNLINK(State* state, char* parameter) {}
+void runUNLINK(State* state, char* parameter) {
+  Directory parent_folder;
+  Directory to_unlink;
+
+  if (findPath(state, &to_unlink, parameter) == EXIT_FAILURE) {
+    printf("unlink: %s: No such file or directory\n", parameter);
+    return;
+  }
+
+  findPathParent(state, &parent_folder, parameter);
+
+  INode source_inode;
+  ioINode(state->disk_info, &source_inode, to_unlink.inode, IOMODE_READ);
+  source_inode.i_links_count--;
+  ioINode(state->disk_info, &source_inode, to_unlink.inode, IOMODE_WRITE);
+
+  if (source_inode.i_links_count <= 0) {
+    deallocateINode(state->disk_info, to_unlink.inode);
+  }
+
+  deallocateDirectoryEntry(state->disk_info, parent_folder.inode, to_unlink.name);
+}
 
 /**
  * @brief Inits the filesystem
@@ -270,7 +345,39 @@ void runMENU(State* state, char* parameter) { printMenu(); }
  * @param state
  * @param parameter
  */
-void runCD(State* state, char* parameter) { printMenu(); }
+void runCD(State* state, char* parameter) {
+  Directory found_file;
+
+  if (findPath(state, &found_file, parameter) == EXIT_FAILURE) {
+    printf("cd: %s: No such file or directory\n", parameter);
+    return;
+  }
+
+  if (found_file.file_type != EXT2_FT_DIR) {
+    printf("cd: %s: Not a directory\n", parameter);
+    return;
+  }
+
+  char    current_folder[EXT2_NAME_LEN] = { '\0' };
+  int32_t offset                        = 0;
+  int8_t  is_more                       = 1;
+  Path*   current_path                  = state->path_cwd;
+
+  while (is_more) {
+    parsePath(current_folder, parameter, &offset, &is_more);
+    Path* new_path   = (Path*)calloc(1, sizeof(Path));
+    new_path->parent = current_path;
+    strcpy(new_path->name, current_folder);
+
+    current_path->child = new_path;
+
+    current_path = new_path;
+  }
+
+  current_path->inode_number = found_file.inode;
+
+  state->path_cwd = current_path;
+}
 
 /**
  * @brief Prints Block Bitmap
@@ -408,6 +515,26 @@ void runINODEINFO(State* state, char* parameter) {
 }
 
 /**
+ * @brief Prints WD
+ *
+ * @param state
+ * @param parameter
+ */
+void runPWD(State* state, char* parameter) {
+  Path* current_pos = state->path_root->child;
+
+  printf("/");
+
+  while (current_pos != state->path_cwd) {
+    printf("%s/", current_pos->name);
+    current_pos = current_pos->child;
+  }
+  printf("%s", current_pos->name);
+
+  printf("\n");
+}
+
+/**
  * @brief Runs a command on the filesystem
  *
  * @param command
@@ -415,9 +542,9 @@ void runINODEINFO(State* state, char* parameter) {
  */
 void runCommand(State* state, Command command, char* parameter) {
   void (*commands[])(State * state, char* parameter) = {
-    runLS,        runMKDIR,       runRMDIR,       runCREATE,  runLINK, runUNLINK,
-    runMKFS,      runCAT,         runCP,          runMENU,    runCD,   runDISKINFO,
-    runINODEINFO, runBLOCKBITMAP, runINODEBITMAP, runRAWBLOCK
+    runLS,        runMKDIR,       runRMDIR,       runCREATE,   runLINK, runUNLINK,
+    runMKFS,      runCAT,         runCP,          runMENU,     runCD,   runDISKINFO,
+    runINODEINFO, runBLOCKBITMAP, runINODEBITMAP, runRAWBLOCK, runPWD
   };
   (*commands[command])(state, parameter);
 }

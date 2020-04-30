@@ -39,6 +39,10 @@ void initializeFilesystem(DiskInfo* disk_info, ExtInfo* ext_info) {
   disk_info->group_count = (disk_info->block_count + ext_info->super_block.s_blocks_per_group - 1) /
                            ext_info->super_block.s_blocks_per_group;
 
+  disk_info->free_blocks = (int64_t)ext_info->super_block.s_free_blocks_hi << 32 |
+                           ext_info->super_block.s_free_blocks_count;
+
+  disk_info->free_inodes = ext_info->super_block.s_free_inodes_count;
   // The group descriptor (for the first group) is the block right after the
   // superblock, so read that in. Depending on the block size, it could be in
   // the 2nd or 3rd block.
@@ -134,7 +138,8 @@ void clearPath(State* state, Path* path) {
     free(current_pos->child);
   }
 
-  state->path_cwd = state->path_root;
+  state->path_cwd         = state->path_root;
+  state->path_root->child = NULL;
 }
 
 /**
@@ -146,9 +151,12 @@ void clearPath(State* state, Path* path) {
 void getParameterStub(char* parameter, char* stub) {
   int32_t parameter_len = strlen(parameter);
 
+  bzero(stub, EXT2_NAME_LEN);
+
   for (int pos = parameter_len; pos > 0; pos--) {
     if (parameter[pos] == '/') {
-      strncpy(stub, parameter + pos + 1, parameter_len - pos - 1);
+      int32_t len = strlen((parameter + pos + 1));
+      strncpy(stub, parameter + pos + 1, len);
       return;
     }
   }

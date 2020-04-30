@@ -24,14 +24,12 @@ void printDiskInfomation(ExtInfo* ext_info, DiskInfo* disk_info) {
   printf("%17s: %10li\n", "Blocks Count",
          (int64_t)ext_info->super_block.s_blocks_count_hi << 32 |
            ext_info->super_block.s_blocks_count);
-  printf("%17s: %10li\n", "Free Blocks Count",
-         (int64_t)ext_info->super_block.s_free_blocks_hi << 32 |
-           ext_info->super_block.s_free_blocks_count);
+  printf("%17s: %10li\n", "Free Blocks Count", disk_info->free_blocks);
   printf("%17s: %10u\n", "Block Size", 1024 << ext_info->super_block.s_log_block_size);
   printf("%17s: %10u\n", "First Block", ext_info->super_block.s_first_data_block);
   printf("%17s: %10u\n", "INode Count", ext_info->super_block.s_inodes_count);
   printf("%17s: %10u\n", "First INode", ext_info->super_block.s_first_ino);
-  printf("%17s: %10u\n", "Free INodes", ext_info->super_block.s_free_inodes_count);
+  printf("%17s: %10lu\n", "Free INodes", disk_info->free_inodes);
   printf("%17s: %10u\n", "INodes per Group", ext_info->super_block.s_inodes_per_group);
 }
 
@@ -110,6 +108,7 @@ void printDirectory(DiskInfo* disk_info, Directory* directory) {
 void printINode(INode* inode) {
   printf("%10s: %10i\n", "Size", inode->i_size);
   printf("%10s: %10i\n", "Blocks", inode->i_blocks);
+  printf("%10s: %10i\n", "Links", inode->i_links_count);
 
   for (int32_t pos = 0; pos < 15; pos++) {
     printf("%5s[%3i]: %10i\n", "Block", pos, inode->i_block[pos]);
