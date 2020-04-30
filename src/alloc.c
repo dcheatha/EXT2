@@ -63,8 +63,8 @@ void deallocateBlock(DiskInfo* disk_info, int32_t block_no) {
   int8_t    buffer[disk_info->block_size];
 
   int32_t group = block_no / disk_info->blocks_per_group;
-  int32_t pos   = block_no % (disk_info->blocks_per_group / 8);
-  int8_t  bit   = pos % 8;
+  int32_t pos   = (block_no % disk_info->blocks_per_group) / 8;
+  int8_t  bit   = block_no % 8;
 
   if (block_no == 0) {
     return;
@@ -79,7 +79,7 @@ void deallocateBlock(DiskInfo* disk_info, int32_t block_no) {
   ioBlock(disk_info, group_desc.bg_block_bitmap, (int8_t*)&buffer, IOMODE_READ);
 
   // Flip the offending bit
-  buffer[pos] &= ~(1 << bit);
+  buffer[pos] &= ~(1 << (bit - 1));
 
   // Dump the bitmap back down to the disk
   ioBlock(disk_info, group_desc.bg_block_bitmap, (int8_t*)&buffer, IOMODE_WRITE);
@@ -243,30 +243,6 @@ int32_t allocateINode(State* state) {
 }
 
 /**
- * @brief Gets rid of a triple indirect block
- *
- * @param disk_info
- * @param block_no
- */
-void deallocateTripleIndirectBlock(DiskInfo* disk_info, int64_t block_no) {
-  int32_t buffer[disk_info->block_size / sizeof(int32_t)];
-
-  if (block_no == 0) {
-    return;
-  }
-
-  ioBlock(disk_info, block_no, (int8_t*)&buffer, IOMODE_READ);
-
-  for (int32_t pos = 0; pos < disk_info->block_size / sizeof(int32_t); pos++) {
-    if (buffer[pos] != 0) {
-      deallocateDoubleIndirectBlock(disk_info, buffer[pos]);
-    }
-  }
-
-  deallocateBlock(disk_info, block_no);
-}
-
-/**
  * @brief Gets rid of a double indirect block
  *
  * @param disk_info
@@ -284,6 +260,30 @@ void deallocateDoubleIndirectBlock(DiskInfo* disk_info, int64_t block_no) {
   for (int32_t pos = 0; pos < disk_info->block_size / sizeof(int32_t); pos++) {
     if (buffer[pos] != 0) {
       deallocateBlock(disk_info, buffer[pos]);
+    }
+  }
+
+  deallocateBlock(disk_info, block_no);
+}
+
+/**
+ * @brief Gets rid of a triple indirect block
+ *
+ * @param disk_info
+ * @param block_no
+ */
+void deallocateTripleIndirectBlock(DiskInfo* disk_info, int64_t block_no) {
+  int32_t buffer[disk_info->block_size / sizeof(int32_t)];
+
+  if (block_no == 0) {
+    return;
+  }
+
+  ioBlock(disk_info, block_no, (int8_t*)&buffer, IOMODE_READ);
+
+  for (int32_t pos = 0; pos < disk_info->block_size / sizeof(int32_t); pos++) {
+    if (buffer[pos] != 0) {
+      deallocateDoubleIndirectBlock(disk_info, buffer[pos]);
     }
   }
 
