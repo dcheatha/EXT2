@@ -66,6 +66,10 @@ void deallocateBlock(DiskInfo* disk_info, int32_t block_no) {
   int32_t pos   = block_no % (disk_info->blocks_per_group / 8);
   int8_t  bit   = pos % 8;
 
+  if (block_no == 0) {
+    return;
+  }
+
   // Dump 0's to the block we're deallocing
   bzero(buffer, disk_info->block_size);
   ioBlock(disk_info, block_no, (int8_t*)&buffer, IOMODE_WRITE);
@@ -239,6 +243,54 @@ int32_t allocateINode(State* state) {
 }
 
 /**
+ * @brief Gets rid of a triple indirect block
+ *
+ * @param disk_info
+ * @param block_no
+ */
+void deallocateTripleIndirectBlock(DiskInfo* disk_info, int64_t block_no) {
+  int32_t buffer[disk_info->block_size / sizeof(int32_t)];
+
+  if (block_no == 0) {
+    return;
+  }
+
+  ioBlock(disk_info, block_no, (int8_t*)&buffer, IOMODE_READ);
+
+  for (int32_t pos = 0; pos < disk_info->block_size / sizeof(int32_t); pos++) {
+    if (buffer[pos] != 0) {
+      deallocateDoubleIndirectBlock(disk_info, buffer[pos]);
+    }
+  }
+
+  deallocateBlock(disk_info, block_no);
+}
+
+/**
+ * @brief Gets rid of a double indirect block
+ *
+ * @param disk_info
+ * @param block_no
+ */
+void deallocateDoubleIndirectBlock(DiskInfo* disk_info, int64_t block_no) {
+  int32_t buffer[disk_info->block_size / sizeof(int32_t)];
+
+  if (block_no == 0) {
+    return;
+  }
+
+  ioBlock(disk_info, block_no, (int8_t*)&buffer, IOMODE_READ);
+
+  for (int32_t pos = 0; pos < disk_info->block_size / sizeof(int32_t); pos++) {
+    if (buffer[pos] != 0) {
+      deallocateBlock(disk_info, buffer[pos]);
+    }
+  }
+
+  deallocateBlock(disk_info, block_no);
+}
+
+/**
  * @brief Deallocates an INode
  *
  * @param disk_info
@@ -256,7 +308,20 @@ void deallocateINode(DiskInfo* disk_info, int32_t inode_no) {
 
   ioINode(disk_info, &inode, inode_no, IOMODE_READ);
 
-  // TODO: Kill all the blocks alloc'd in the INode.
+  IndirectRange range = calculateIndirectRange(disk_info);
+
+  // Kill all of the data blocks
+  for (int64_t block_pos = 0; block_pos < inode.i_blocks; block_pos++) {
+    int32_t block_no = 0;
+    ioFileBlockHelper(disk_info, &block_no, &inode, &range, block_pos);
+
+    deallocateBlock(disk_info, block_no);
+  }
+
+  // Kill the indirect blocks if they exist
+  deallocateBlock(disk_info, inode.i_block[EXT2_INDIRECT_SINGLE]);
+  deallocateDoubleIndirectBlock(disk_info, inode.i_block[EXT2_INDIRECT_DOUBLE]);
+  deallocateTripleIndirectBlock(disk_info, inode.i_block[EXT2_INDIRECT_TRIPLE]);
 
   // Dump 0's to the block we're deallocing
   bzero(&inode, sizeof(INode));
