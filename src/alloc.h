@@ -41,6 +41,15 @@ int32_t allocateINode(State* state);
 int32_t allocateBlock(DiskInfo* disk_info);
 
 /**
+ * @brief Loads an INode up with all the blocks it'll need
+ *
+ * @param disk_info
+ * @param inode
+ * @param blocks_count
+ */
+void allocateINodeBlocks(DiskInfo* disk_info, INode* inode, int64_t blocks_count);
+
+/**
  * @brief Allocs a new dir table
  *
  * @param state

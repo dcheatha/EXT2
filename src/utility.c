@@ -31,9 +31,13 @@ void initializeFilesystem(DiskInfo* disk_info, ExtInfo* ext_info) {
   // Need to know how many inodes there are in a group
   disk_info->inodes_per_group = ext_info->super_block.s_inodes_per_group;
 
-  // Can't figure out how to get this number. Blocks Count returns the size of
-  // the filesystem in megabytes which makes no sense whatsoever.
-  disk_info->group_count = 2;
+  disk_info->block_count =
+    (int64_t)ext_info->super_block.s_blocks_count_hi << 32 | ext_info->super_block.s_blocks_count;
+
+  disk_info->inode_count = ext_info->super_block.s_inodes_count;
+
+  disk_info->group_count = (disk_info->block_count + ext_info->super_block.s_blocks_per_group - 1) /
+                           ext_info->super_block.s_blocks_per_group;
 
   // The group descriptor (for the first group) is the block right after the
   // superblock, so read that in. Depending on the block size, it could be in

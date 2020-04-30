@@ -145,7 +145,6 @@ void runCAT(State* state, char* parameter) {
  * @param parameter
  */
 void runCP(State* state, char* parameter) {
-  /*
   Directory parent_folder;
   Directory source_file;
   Directory dest_file;
@@ -154,28 +153,53 @@ void runCP(State* state, char* parameter) {
   char dest[EXT2_NAME_LEN];
 
   char* token = strtok(parameter, " ");
-  strcpy(source, token);
-  token = strtok(parameter, " ");
   strcpy(dest, token);
+  token = strtok(NULL, " ");
 
-  if (readPath(state, source, &source_file) == EXIT_FAILURE) {
+  if (token == NULL) {
+    printf("cp: Must specify two paths\n");
+  }
+
+  strcpy(source, token);
+
+  if (findPath(state, &source_file, source) == EXIT_FAILURE) {
     printf("cp: %s: No such file or directory\n", source);
     return;
   }
+
+  findPathParent(state, &parent_folder, parameter);
 
   if (source_file.file_type != EXT2_FT_REG_FILE) {
     printf("cp: %s: Is not a regular file\n", source);
     return;
   }
 
+  // Dump the dir name to the disk
   strcpy(dest_file.name, dest);
   dest_file.name_len  = strlen(dest_file.name);
   dest_file.file_type = EXT2_FT_REG_FILE;
   dest_file.rec_len   = 8 + strlen(dest_file.name);
   dest_file.inode     = allocateINode(state);
-
   allocateDirectoryEntry(state->disk_info, parent_folder.inode, &dest_file);
-  */
+
+  // Load the INodes we're about to copy
+  INode dest_inode;
+  INode source_inode;
+  ioINode(state->disk_info, &dest_inode, dest_file.inode, IOMODE_READ);
+  ioINode(state->disk_info, &source_inode, source_file.inode, IOMODE_READ);
+
+  // Allocate all of the blocks our dest INode will require:
+  allocateINodeBlocks(state->disk_info, &dest_inode, source_inode.i_blocks);
+
+  // Lazily just load the entire file into ram:
+  int8_t* file_contents = (int8_t*)calloc(sizeof(int8_t), source_inode.i_size);
+
+  ioFile(state->disk_info, file_contents, &source_inode, source_inode.i_size, 0, IOMODE_READ);
+  ioFile(state->disk_info, file_contents, &dest_inode, source_inode.i_size, 0, IOMODE_WRITE);
+
+  dest_inode.i_size = source_inode.i_size;
+
+  ioINode(state->disk_info, &dest_inode, dest_file.inode, IOMODE_WRITE);
 }
 
 /**
@@ -332,6 +356,34 @@ void runINODEBITMAP(State* state, char* parameter) {
 }
 
 /**
+ * @brief Views an indirect block
+ *
+ * @param state
+ * @param parameter
+ */
+void runRAWBLOCK(State* state, char* parameter) {
+  int64_t block_no = atoi(parameter);
+
+  int32_t buffer[state->disk_info->block_size / sizeof(int32_t)];
+
+  if (block_no == 0) {
+    return;
+  }
+
+  ioBlock(state->disk_info, block_no, (int8_t*)&buffer, IOMODE_READ);
+
+  for (int32_t pos = 0; pos < state->disk_info->block_size / sizeof(int32_t); pos++) {
+    if (pos % 8 == 0) {
+      printf("\n%4d:", pos);
+    }
+
+    printf("%11d ", buffer[pos]);
+  }
+
+  printf("\n");
+}
+
+/**
  * @brief Prints the current disk info
  *
  * @param state
@@ -363,8 +415,9 @@ void runINODEINFO(State* state, char* parameter) {
  */
 void runCommand(State* state, Command command, char* parameter) {
   void (*commands[])(State * state, char* parameter) = {
-    runLS, runMKDIR, runRMDIR, runCREATE,   runLINK,      runUNLINK,      runMKFS,       runCAT,
-    runCP, runMENU,  runCD,    runDISKINFO, runINODEINFO, runBLOCKBITMAP, runINODEBITMAP
+    runLS,        runMKDIR,       runRMDIR,       runCREATE,  runLINK, runUNLINK,
+    runMKFS,      runCAT,         runCP,          runMENU,    runCD,   runDISKINFO,
+    runINODEINFO, runBLOCKBITMAP, runINODEBITMAP, runRAWBLOCK
   };
   (*commands[command])(state, parameter);
 }

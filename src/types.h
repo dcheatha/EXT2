@@ -53,6 +53,8 @@ typedef struct ext2_dir_entry_tail DirectoryTail;
 typedef struct disk_info {
   int32_t file_desc;
   int64_t block_size;
+  int64_t block_count;
+  int64_t inode_count;
   int32_t s_log_block_size;
   int32_t inodes_per_group;
   int32_t blocks_per_group;
@@ -87,7 +89,8 @@ enum Command {
   DISKINFO,
   INODEINFO,
   BLOCKBITMAP,
-  INODEBITMAP
+  INODEBITMAP,
+  RAWBLOCK,
 } typedef Command;
 
 /**

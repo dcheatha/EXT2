@@ -28,7 +28,7 @@ void ioBytes(DiskInfo* disk_info, int8_t* buffer, int64_t length, int64_t offset
       return;
     }
     default: {
-      printf("io: ioBytes(): error: Unsupported IOMode %d\n", mode);
+      printf("io: ioBytes(): error: Unsupported IOMode %5d\n", mode);
       exit(EXIT_FAILURE);
     }
   }
@@ -60,16 +60,15 @@ void ioBlockPart(DiskInfo* disk_info, int8_t* buffer, int64_t block, int64_t len
                  IOMode mode) {
   if (length + offset > disk_info->block_size) {
     printf(
-      "io: ioBlockPart(): error: Attempted to seek past block boundaries on block %ld from bytes "
-      "%ld to %ld "
+      "io: ioBlockPart(): error: Attempted to seek past block boundaries on block %5ld from bytes "
+      "%5ld to %5ld "
       "\n",
       block, offset, offset + length);
     exit(EXIT_FAILURE);
   }
 
-  // printf("io: ioBlockPart(): info: Seeking block %ld from %ld to %ld for mode %d\n", block,
-  // offset,
-  //       offset + length, mode);
+  // printf("io: ioBlockPart(): info: Seeking block %5ld from %5ld to %5ld for mode %5d\n", block,
+  //        offset, offset + length, mode);
 
   ioBytes(disk_info, buffer, length, block * disk_info->block_size + offset, mode);
 }
@@ -224,19 +223,20 @@ void ioFile(DiskInfo* disk_info, int8_t* buffer, INode* inode, int64_t length, i
     bzero(buffer, length);
   }
 
-  // printf("io: ioFile(): info: Seeking from %ld to %ld for mode %d\n", offset, offset + length,
+  // printf("io: ioFile(): info: Seeking from %5ld to %5ld for mode %5d\n", offset, offset + length,
   //       mode);
 
   if (blocks_to_io > inode->i_blocks) {
-    printf("io: ioFile(): error: Requested to seek %d blocks when there are only %d blocks\n",
+    printf("io: ioFile(): error: Requested to seek %5d blocks when there are only %5d blocks\n",
            blocks_to_io, inode->i_blocks);
 
     exit(EXIT_FAILURE);
   }
 
   if (blocks_to_io + offset_blocks > inode->i_blocks) {
-    printf("io: ioFile(): warn: Requested to seek blocks %d to %d when there are only %d blocks\n",
-           offset_blocks, blocks_to_io + offset_blocks, inode->i_blocks);
+    printf(
+      "io: ioFile(): warn: Requested to seek blocks %5d to %5d when there are only %5d blocks\n",
+      offset_blocks, blocks_to_io + offset_blocks, inode->i_blocks);
 
     exit(EXIT_FAILURE);
   }

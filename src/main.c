@@ -91,6 +91,8 @@ int32_t main(int32_t argc, char** argv) {
   uint32_t command_id;
   char     parameter[EXT2_NAME_LEN];
 
+  printf("\nshell: info: Use \"help\" to see a list of available commands\n");
+
   while (1) {
     bzero(parameter, sizeof(parameter));
 

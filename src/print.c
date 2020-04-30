@@ -19,7 +19,7 @@ void printMenu() {
 void printDiskInfomation(ExtInfo* ext_info, DiskInfo* disk_info) {
   printf("%17s: %10s\n", "Volume Name", ext_info->super_block.s_volume_name);
   printf("%17s: %10s\n", "Last Mount Path", ext_info->super_block.s_last_mounted);
-
+  printf("%17s: %10u\n", "Groups", disk_info->group_count);
   printf("%17s: %10u\n", "Blocks per Group", ext_info->super_block.s_blocks_per_group);
   printf("%17s: %10li\n", "Blocks Count",
          (int64_t)ext_info->super_block.s_blocks_count_hi << 32 |
