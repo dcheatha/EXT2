@@ -14,10 +14,16 @@ void ioBytes(DiskInfo* disk_info, int8_t* buffer, int64_t length, int64_t offset
 
   switch (mode) {
     case IOMODE_READ: {
+      // printf("io: ioBytes(): info: Reading %5ld bytes from %5ld to %5ld\n", length, offset,
+      //        offset + length);
+
       read(disk_info->file_desc, buffer, length);
       return;
     }
     case IOMODE_WRITE: {
+      // printf("io: ioBytes(): info: Writing %5ld bytes from %5ld to %5ld\n", length, offset,
+      //       offset + length);
+
       write(disk_info->file_desc, buffer, length);
       return;
     }
@@ -37,7 +43,7 @@ void ioBytes(DiskInfo* disk_info, int8_t* buffer, int64_t length, int64_t offset
  * @param mode
  */
 void ioBlock(DiskInfo* disk_info, int64_t block, int8_t* buffer, IOMode mode) {
-  ioBytes(disk_info, buffer, block * disk_info->block_size, disk_info->block_size, mode);
+  ioBytes(disk_info, buffer, disk_info->block_size, block * disk_info->block_size, mode);
 }
 
 /**
@@ -61,7 +67,7 @@ void ioBlockPart(DiskInfo* disk_info, int8_t* buffer, int64_t block, int64_t len
     exit(EXIT_FAILURE);
   }
 
-  ioBytes(disk_info, buffer, block * disk_info->block_size + offset, length, mode);
+  ioBytes(disk_info, buffer, length, block * disk_info->block_size + offset, mode);
 }
 
 /**
@@ -73,6 +79,7 @@ void ioBlockPart(DiskInfo* disk_info, int8_t* buffer, int64_t block, int64_t len
  * @param mode
  */
 void ioGroupDescriptor(DiskInfo* disk_info, GroupDesc* group, int64_t group_no, IOMode mode) {
+  // printf("io: ioGroupDescriptor(): Seeking Group %4ld\n", group_no);
   ioBlockPart(disk_info, (int8_t*)group, 2, sizeof(GroupDesc), group_no * sizeof(GroupDesc), mode);
 }
 
@@ -87,6 +94,8 @@ void ioGroupDescriptor(DiskInfo* disk_info, GroupDesc* group, int64_t group_no, 
 void ioINode(DiskInfo* disk_info, INode* inode, int64_t inode_no, IOMode mode) {
   int64_t group_no    = (inode_no - 1) / disk_info->inodes_per_group;
   int32_t table_index = (inode_no - 1) % disk_info->inodes_per_group;
+
+  // printf("io: ioINode(): Seeking INode %4ld\n", inode_no);
 
   GroupDesc group_desc;
 
@@ -112,11 +121,17 @@ int64_t ioDirectoryEntry(DiskInfo* disk_info, Directory* directory, INode* inode
                          IOMode mode) {
   int64_t directory_index = offset % disk_info->block_size;
   int64_t padding_length  = 0;
+  // printf("io: ioDirectoryEntry(): Seeking Dir Entry at offset %4ld\n", offset);
 
   directory->rec_len = 8 + directory->name_len;
 
   // Do the first part of the struct
   ioFile(disk_info, (int8_t*)directory, inode, 8, directory_index, mode);
+
+  // If we're doing a read, zero out the data we're about to write into
+  if (mode == IOMODE_READ) {
+    bzero(directory->name, sizeof(directory->name));
+  }
 
   // Do the name
   ioFile(disk_info, (int8_t*)directory->name, inode, directory->name_len, directory_index + 8,
@@ -137,6 +152,70 @@ int64_t ioDirectoryEntry(DiskInfo* disk_info, Directory* directory, INode* inode
 }
 
 /**
+ * @brief Helps calculate which block to seek given an INode.
+ * Block_no is overwritten with the correct block to seek.
+ *
+ * We continuous adjust block_no to point to the next block we need to seek
+ * from. For example, to read a double indirect block block_no is set to the double indirect
+ * block. We read the correct index, and block_no now points to a single indirect block. We read
+ * the index again, and now block_no points to the correct data. If I have more time, I will
+ * cache the blocks.
+ *
+ * @param disk_info
+ * @param block_no
+ * @param inode
+ * @param range
+ * @param block_pos
+ */
+void ioFileBlockHelper(DiskInfo* disk_info, int32_t* block_no, INode* inode, IndirectRange* range,
+                       int64_t block_pos) {
+  // Triple Indirect reader:
+  if (block_pos >= range->triple_start) {
+    int32_t block_index =
+      (block_pos - range->triple_start) / (range->indirects_per_block) %
+      (range->indirects_per_block * range->indirects_per_block * range->indirects_per_block);
+    int32_t block_offset = sizeof(int32_t) * block_index;
+
+    ioBlockPart(disk_info, (int8_t*)block_no, inode->i_block[EXT2_INDIRECT_TRIPLE], sizeof(int32_t),
+                block_offset, IOMODE_READ);
+  }
+
+  // Double Indirect reader:
+  if (block_pos >= range->double_start) {
+    int32_t block_index = (block_pos - range->double_start) / (range->indirects_per_block) %
+                          (range->indirects_per_block * range->indirects_per_block);
+    int32_t block_offset = sizeof(int32_t) * block_index;
+
+    // If triple indirect was NOT called, then work off of double indirect table
+    if (!(block_pos >= range->triple_start)) {
+      *block_no = inode->i_block[EXT2_INDIRECT_DOUBLE];
+    }
+
+    ioBlockPart(disk_info, (int8_t*)block_no, *block_no, sizeof(int32_t), block_offset,
+                IOMODE_READ);
+  }
+
+  // Single Indirect reader:
+  if (block_pos >= range->single_start) {
+    int32_t block_index  = (block_pos - range->single_start) % range->indirects_per_block;
+    int32_t block_offset = sizeof(int32_t) * block_index;
+
+    // If double indirect was NOT called, then work off of single indirect table
+    if (!(block_pos >= range->double_start)) {
+      *block_no = inode->i_block[EXT2_INDIRECT_SINGLE];
+    }
+
+    ioBlockPart(disk_info, (int8_t*)block_no, *block_no, sizeof(int32_t), block_offset,
+                IOMODE_READ);
+  }
+
+  // Direct Block reader:
+  if (block_pos < range->single_start) {
+    *block_no = inode->i_block[block_pos];
+  }
+}
+
+/**
  * @brief Do an IO operation on a file (the data an INode points to...)
  *
  * @param disk_info
@@ -153,7 +232,7 @@ void ioFile(DiskInfo* disk_info, int8_t* buffer, INode* inode, int64_t length, i
 
   bzero(buffer, length);
 
-  printf("io: ioFile(): info: Seeking from %ld to %ld\n", offset, offset + length);
+  // printf("io: ioFile(): info: Seeking from %ld to %ld\n", offset, offset + length);
 
   if (blocks_to_io > inode->i_blocks) {
     printf("io: ioFile(): error: Requested to seek %d blocks when there are only %d blocks\n",
@@ -194,57 +273,8 @@ void ioFile(DiskInfo* disk_info, int8_t* buffer, INode* inode, int64_t length, i
       io_length = length - buffer_pos;
     }
 
-    // Business logic starts here:
-    // TL;DR for Biz logic: We continuous adjust block_no to point to the next block we need to read
-    // from. For example, to read a double indirect block block_no is set to the double indirect
-    // block. We read the correct index, and block_no now points to a single indirect block. We read
-    // the index again, and now block_no points to the correct data. If I have more time, I will
-    // cache the blocks.
-
-    // Triple Indirect reader:
-    if (block_pos >= range.triple_start) {
-      int32_t block_index =
-        (block_pos - range.triple_start) / (range.indirects_per_block) %
-        (range.indirects_per_block * range.indirects_per_block * range.indirects_per_block);
-      int32_t block_offset = sizeof(int32_t) * block_index;
-
-      ioBlockPart(disk_info, (int8_t*)&block_no, inode->i_block[EXT2_INDIRECT_TRIPLE],
-                  sizeof(int32_t), block_offset, IOMODE_READ);
-    }
-
-    // Double Indirect reader:
-    if (block_pos >= range.double_start) {
-      int32_t block_index = (block_pos - range.double_start) / (range.indirects_per_block) %
-                            (range.indirects_per_block * range.indirects_per_block);
-      int32_t block_offset = sizeof(int32_t) * block_index;
-
-      // If triple indirect was NOT called, then work off of double indirect table
-      if (!(block_pos >= range.triple_start)) {
-        block_no = inode->i_block[EXT2_INDIRECT_DOUBLE];
-      }
-
-      ioBlockPart(disk_info, (int8_t*)&block_no, block_no, sizeof(int32_t), block_offset,
-                  IOMODE_READ);
-    }
-
-    // Single Indirect reader:
-    if (block_pos >= range.single_start) {
-      int32_t block_index  = (block_pos - range.single_start) % range.indirects_per_block;
-      int32_t block_offset = sizeof(int32_t) * block_index;
-
-      // If double indirect was NOT called, then work off of single indirect table
-      if (!(block_pos >= range.double_start)) {
-        block_no = inode->i_block[EXT2_INDIRECT_SINGLE];
-      }
-
-      ioBlockPart(disk_info, (int8_t*)&block_no, block_no, sizeof(int32_t), block_offset,
-                  IOMODE_READ);
-    }
-
-    // Direct Block reader:
-    if (block_pos < range.single_start) {
-      block_no = inode->i_block[block_pos];
-    }
+    // Calculate which block we need to read:
+    ioFileBlockHelper(disk_info, &block_no, inode, &range, block_pos);
 
     ioBlockPart(disk_info, buffer + buffer_pos, block_no, io_length, io_offset, mode);
     buffer_pos += io_length;

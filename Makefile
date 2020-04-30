@@ -1,6 +1,6 @@
 # Compiler Info
 COMPILER    = gcc
-CFLAGS      = -g -I . -Wall -Wshadow
+CFLAGS      = -g -Wall -Wshadow
 RFLAGS      = -O3 -s -Wall -DNDEBUG
 SRCDIR      = src
 
@@ -9,7 +9,7 @@ BINNAME     = main
 BINDIR      = bin
 
 # Disk file
-DISKNAME    = ext2-dev-disk
+DISKNAME    = disk2
 
 # Testing
 TESTDIR     = test

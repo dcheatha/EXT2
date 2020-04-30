@@ -173,7 +173,7 @@ void printFile(DiskInfo* disk_info, INode* file) {
 
   ioFile(disk_info, seriously_the_entire_file, file, file->i_size, 0, IOMODE_READ);
 
-  printf("%s\n", seriously_the_entire_file);
+  printf("%s", seriously_the_entire_file);
 
   free(seriously_the_entire_file);
 }
