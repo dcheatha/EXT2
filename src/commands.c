@@ -249,6 +249,89 @@ void runMENU(State* state, char* parameter) { printMenu(); }
 void runCD(State* state, char* parameter) { printMenu(); }
 
 /**
+ * @brief Prints Block Bitmap
+ *
+ * @param state
+ * @param parameter
+ */
+void runBLOCKBITMAP(State* state, char* parameter) {
+  GroupDesc group_desc;
+  int8_t    buffer[state->disk_info->block_size];
+
+  int64_t block_count = (int64_t)state->ext_info->super_block.s_blocks_count_hi << 32 |
+                        state->ext_info->super_block.s_blocks_count;
+
+  printf("      ");
+
+  for (int32_t pos = 0; pos < 8; pos++) {
+    printf("%-9d", pos * 8);
+  }
+
+  for (int32_t group = 0; group < state->disk_info->group_count; group++) {
+    ioGroupDescriptor(state->disk_info, &group_desc, group, IOMODE_READ);
+    ioBlock(state->disk_info, group_desc.bg_block_bitmap, (int8_t*)&buffer, IOMODE_READ);
+
+    for (int32_t pos = 0; pos < state->disk_info->blocks_per_group / 8; pos++) {
+      int64_t real_block_pos = 8 * (pos + group * (state->disk_info->blocks_per_group / 8));
+
+      if (block_count < real_block_pos) {
+        break;
+      }
+
+      if (pos % 8 == 0) {
+        printf("\n%5ld ", real_block_pos);
+      }
+
+      printBitmap(buffer[pos]);
+      printf(" ");
+    }
+  }
+
+  printf("\n");
+}
+
+/**
+ * @brief Prints INode bitmap
+ *
+ * @param state
+ * @param parameter
+ */
+void runINODEBITMAP(State* state, char* parameter) {
+  GroupDesc group_desc;
+  int8_t    buffer[state->disk_info->block_size];
+
+  int64_t block_count = state->ext_info->super_block.s_inodes_count;
+
+  printf("      ");
+
+  for (int32_t pos = 0; pos < 8; pos++) {
+    printf("%-9d", pos * 8);
+  }
+
+  for (int32_t group = 0; group < state->disk_info->group_count; group++) {
+    ioGroupDescriptor(state->disk_info, &group_desc, group, IOMODE_READ);
+    ioBlock(state->disk_info, group_desc.bg_inode_bitmap, (int8_t*)&buffer, IOMODE_READ);
+
+    for (int32_t pos = 0; pos < state->disk_info->inodes_per_group / 8; pos++) {
+      int64_t real_block_pos = 8 * (pos + group * (state->disk_info->inodes_per_group / 8));
+
+      if (block_count < real_block_pos) {
+        break;
+      }
+
+      if (pos % 8 == 0) {
+        printf("\n%5ld ", real_block_pos);
+      }
+
+      printBitmap(buffer[pos]);
+      printf(" ");
+    }
+  }
+
+  printf("\n");
+}
+
+/**
  * @brief Prints the current disk info
  *
  * @param state
@@ -279,9 +362,9 @@ void runINODEINFO(State* state, char* parameter) {
  * @param parameter
  */
 void runCommand(State* state, Command command, char* parameter) {
-  void (*commands[])(State * state,
-                     char* parameter) = { runLS,     runMKDIR,    runRMDIR,    runCREATE, runLINK,
-                                          runUNLINK, runMKFS,     runCAT,      runCP,     runMENU,
-                                          runCD,     runDISKINFO, runINODEINFO };
+  void (*commands[])(State * state, char* parameter) = {
+    runLS, runMKDIR, runRMDIR, runCREATE,   runLINK,      runUNLINK,      runMKFS,       runCAT,
+    runCP, runMENU,  runCD,    runDISKINFO, runINODEINFO, runBLOCKBITMAP, runINODEBITMAP
+  };
   (*commands[command])(state, parameter);
 }

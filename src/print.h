@@ -10,9 +10,21 @@
 /**
  * @brief List of commands as strings
  */
-static const char* kPrintCommands[] = { "ls",     "mkdir",      "rmdir",      "create", "link",
-                                        "unlink", "mkfs",       "cat",        "cp",     "help",
-                                        "cd",     "debug.disk", "debug.inode" };
+static const char* kPrintCommands[] = { "ls",
+                                        "mkdir",
+                                        "rmdir",
+                                        "create",
+                                        "link",
+                                        "unlink",
+                                        "mkfs",
+                                        "cat",
+                                        "cp",
+                                        "help",
+                                        "cd",
+                                        "debug.disk",
+                                        "debug.inode",
+                                        "debug.blockbitmap",
+                                        "debug.inodebitmap" };
 
 /**
  * @brief Count of commands

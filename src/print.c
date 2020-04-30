@@ -155,10 +155,12 @@ void printDirectoryTable(DiskInfo* disk_info, int32_t inode_start) {
  * @param bitmap
  */
 void printBitmap(int8_t bitmap) {
-  printf("0b");
-
   for (int8_t bit_pos = 0; bit_pos < 8 * sizeof(int8_t); bit_pos++) {
-    printf("%i", testBit(bitmap, bit_pos));
+    if (testBit(bitmap, bit_pos)) {
+      printf("▅");
+    } else {
+      printf("▁");
+    }
   }
 }
 

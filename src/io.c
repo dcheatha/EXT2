@@ -67,6 +67,10 @@ void ioBlockPart(DiskInfo* disk_info, int8_t* buffer, int64_t block, int64_t len
     exit(EXIT_FAILURE);
   }
 
+  // printf("io: ioBlockPart(): info: Seeking block %ld from %ld to %ld for mode %d\n", block,
+  // offset,
+  //       offset + length, mode);
+
   ioBytes(disk_info, buffer, length, block * disk_info->block_size + offset, mode);
 }
 
@@ -119,14 +123,10 @@ void ioINode(DiskInfo* disk_info, INode* inode, int64_t inode_no, IOMode mode) {
  */
 int64_t ioDirectoryEntry(DiskInfo* disk_info, Directory* directory, INode* inode, int64_t offset,
                          IOMode mode) {
-  int64_t directory_index = offset % disk_info->block_size;
-  int64_t padding_length  = 0;
   // printf("io: ioDirectoryEntry(): Seeking Dir Entry at offset %4ld\n", offset);
 
-  directory->rec_len = 8 + directory->name_len;
-
   // Do the first part of the struct
-  ioFile(disk_info, (int8_t*)directory, inode, 8, directory_index, mode);
+  ioFile(disk_info, (int8_t*)directory, inode, 8, offset, mode);
 
   // If we're doing a read, zero out the data we're about to write into
   if (mode == IOMODE_READ) {
@@ -134,21 +134,11 @@ int64_t ioDirectoryEntry(DiskInfo* disk_info, Directory* directory, INode* inode
   }
 
   // Do the name
-  ioFile(disk_info, (int8_t*)directory->name, inode, directory->name_len, directory_index + 8,
-         mode);
+  ioFile(disk_info, (int8_t*)directory->name, inode, directory->name_len, offset + 8, mode);
 
-  // If we are doing a write, then we should add some padding:
-  // However, we need to control for the edge case where we are at the very start of a new block,
-  // but that may be done later:
-  if (directory_index % 4 != 0 && mode == IOMODE_WRITE) {
-    int8_t padding_data[] = { 0, 0, 0, 0 };
-    padding_length        = 4 - (directory_index % 4);
+  directory->rec_len = strlen(directory->name) + 8;
 
-    ioFile(disk_info, (int8_t*)&padding_data, inode, padding_length,
-           directory_index + 8 + directory->name_len, IOMODE_WRITE);
-  }
-
-  return 8 + directory->name_len + padding_length;
+  return directory->rec_len;
 }
 
 /**
@@ -230,9 +220,12 @@ void ioFile(DiskInfo* disk_info, int8_t* buffer, INode* inode, int64_t length, i
   int32_t blocks_to_io  = length / disk_info->block_size + (length % disk_info->block_size != 0);
   int32_t offset_blocks = offset / disk_info->block_size;
 
-  bzero(buffer, length);
+  if (mode == IOMODE_READ) {
+    bzero(buffer, length);
+  }
 
-  // printf("io: ioFile(): info: Seeking from %ld to %ld\n", offset, offset + length);
+  // printf("io: ioFile(): info: Seeking from %ld to %ld for mode %d\n", offset, offset + length,
+  //       mode);
 
   if (blocks_to_io > inode->i_blocks) {
     printf("io: ioFile(): error: Requested to seek %d blocks when there are only %d blocks\n",

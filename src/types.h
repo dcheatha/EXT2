@@ -85,7 +85,9 @@ enum Command {
   MENU,
   CD,
   DISKINFO,
-  INODEINFO
+  INODEINFO,
+  BLOCKBITMAP,
+  INODEBITMAP
 } typedef Command;
 
 /**

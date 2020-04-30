@@ -87,6 +87,18 @@ int64_t ioDirectoryEntry(DiskInfo* disk_info, Directory* directory, INode* inode
                          IOMode mode);
 
 /**
+ * @brief Reads data from an INode in order
+ *
+ * @param disk_info
+ * @param block_no
+ * @param inode
+ * @param range
+ * @param block_pos
+ */
+void ioFileBlockHelper(DiskInfo* disk_info, int32_t* block_no, INode* inode, IndirectRange* range,
+                       int64_t block_pos);
+
+/**
  * @brief Does an IO operation on a file (really, just the data in an INode)
  *
  * @param disk_info

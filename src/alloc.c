@@ -115,10 +115,12 @@ void allocateDirectoryEntry(DiskInfo* disk_info, int32_t inode_no, Directory* di
       }
 
       // Write the new directory entry to the disk:
-      write_index += ioDirectoryEntry(disk_info, &root_dir, &root_inode, write_index, IOMODE_WRITE);
+      write_index += ioDirectoryEntry(disk_info, directory, &root_inode, write_index, IOMODE_WRITE);
+      // printDirectory(disk_info, directory);
 
       // Now write the end dir back:
       write_index += ioDirectoryEntry(disk_info, &root_dir, &root_inode, write_index, IOMODE_WRITE);
+
       // Now increase INode link count (The root dir now links to it)
       root_inode.i_links_count++;
       root_inode.i_atime = now;
