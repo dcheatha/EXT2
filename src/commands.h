@@ -3,6 +3,7 @@
 
 #include "types.h"
 #include "utility.h"
+#include "find.h"
 
 /**
  * @brief Runs a command on the filesystem

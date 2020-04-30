@@ -110,7 +110,6 @@ void ioINode(DiskInfo* disk_info, INode* inode, int64_t inode_no, IOMode mode) {
  */
 int64_t ioDirectoryEntry(DiskInfo* disk_info, Directory* directory, INode* inode, int64_t offset,
                          IOMode mode) {
-  int64_t block_index     = offset / disk_info->block_size;
   int64_t directory_index = offset % disk_info->block_size;
   int64_t padding_length  = 0;
 
@@ -154,7 +153,7 @@ void ioFile(DiskInfo* disk_info, int8_t* buffer, INode* inode, int64_t length, i
 
   bzero(buffer, length);
 
-  printf("io: ioFile(): info: Seeking from %d to %d\n", offset, offset + length);
+  printf("io: ioFile(): info: Seeking from %ld to %ld\n", offset, offset + length);
 
   if (blocks_to_io > inode->i_blocks) {
     printf("io: ioFile(): error: Requested to seek %d blocks when there are only %d blocks\n",
